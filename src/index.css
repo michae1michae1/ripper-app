@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark MTG-inspired color palette */
+  --color-midnight: #0d0f14;
+  --color-obsidian: #141820;
+  --color-slate: #1e2330;
+  --color-storm: #2a3142;
+  --color-mist: #8b95a8;
+  --color-silver: #c5cdd9;
+  --color-snow: #f0f2f5;
+
+  /* Accent colors - MTG mana inspired */
+  --color-arcane: #7c5bf5;
+  --color-arcane-bright: #9d82f7;
+  --color-arcane-dim: #5a3db8;
+
+  /* Status colors */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* MTG mana colors */
+  --color-mana-white: #f8f4e8;
+  --color-mana-blue: #0e68ab;
+  --color-mana-black: #3d3a2f;
+  --color-mana-red: #d32029;
+  --color-mana-green: #00733e;
+
+  /* Typography */
+  --font-display: "Cinzel", serif;
+  --font-body: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Spacing */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-storm);
+  }
+
+  body {
+    background-color: var(--color-midnight);
+    color: var(--color-silver);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: var(--color-snow);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Utility classes */
+.input {
+  width: 100%;
+  background-color: var(--color-slate);
+  border: 1px solid var(--color-storm);
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  color: var(--color-snow);
+  transition: all 200ms;
+}
+
+.input::placeholder {
+  color: var(--color-mist);
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-arcane);
+  border-color: transparent;
+}
+
+/* Timer display gradient */
+.timer-gradient {
+  background: linear-gradient(180deg, var(--color-silver) 0%, var(--color-mist) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card glow effect */
+.glow-arcane {
+  box-shadow: 0 0 20px rgba(124, 91, 245, 0.15);
+}
+
+/* Animated pulse for active states */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}

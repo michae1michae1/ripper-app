@@ -1,0 +1,158 @@
+---
+alwaysApply: true
+---
+
+## Hard Rules - NO EXCEPTIONS
+
+1. Components max 100 lines. Over 100? Extract sub-components immediately.
+2. Functions max 20 lines. Over 20? Break into smaller functions.
+3. Max 3 function parameters. Need more? Use an options object.
+4. No `any` type. Use `unknown` for truly unknown data, then narrow it.
+5. Props interface required for every component. No inline types.
+6. One component per file. File name matches component name exactly.
+7. Copy-pasting JSX twice? Stop. Extract a component.
+8. Business logic goes in `/hooks` or `/utils`, never mixed in JSX.
+
+## Naming - FOLLOW EXACTLY
+
+```tsx
+// Components: [Domain][ComponentType]
+EnergyDataTable.tsx
+GapAnalysisChart.tsx
+ResilienceScoreCard.tsx
+
+// Hooks: use[Action][Domain]
+useEnergyData.ts
+useFetchGapAnalysis.ts
+
+// Utils: [verb][noun]
+formatEnergyValue.ts
+calculateResilienceScore.ts
+
+// Types: [Domain]
+energy.ts
+gap.ts
+```
+
+No generic names: `Container`, `Wrapper`, `Helper`, `Manager`, `Handler`.
+
+## Component Pattern
+
+```tsx
+// 1. Interface first
+interface DataTableProps {
+  data: EnergyData[];
+  onSort?: (column: string) => void;
+}
+
+// 2. Component with typed props
+export const DataTable = ({ data, onSort }: DataTableProps) => {
+  // 3. Hooks at top
+  const { sortedData } = useSortedData(data);
+  
+  // 4. Early returns for loading/error states
+  if (!data.length) return <EmptyState />;
+  
+  // 5. Render with extracted components
+  return (
+    <div>
+      <TableHeader onSort={onSort} />
+      <TableBody data={sortedData} />
+    </div>
+  );
+};
+```
+
+## TypeScript
+
+```tsx
+//  Strict types
+interface EnergyData {
+  id: string;
+  capacity: number;
+  source: 'solar' | 'wind' | 'hydro';
+}
+
+//  Union types for variants
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
+
+// Options object for 4+ params
+interface CreateReportOptions {
+  title: string;
+  data: ReportData[];
+  format: 'pdf' | 'excel';
+  includeCharts: boolean;
+}
+```
+
+## Red Flags - STOP IMMEDIATELY
+
+- Component over 150 lines → Extract now
+- Function with 4+ parameters → Use options object
+- Nested ternaries → Extract to variable or function
+- `any` type → Replace with proper type
+- Generic names → Rename to be specific
+- Commented code → Delete it
+- console.logs in components → Remove them
+
+## Modularity & Reusability
+
+**When to make a component reusable:**
+- Used in 2+ places in your module → Extract now
+- Handles a single UI pattern (button, card, input) → Make it generic
+- Business logic mixed in → Keep it specific to this module
+
+**Designing for reuse:**
+```tsx
+//  Flexible - Works in multiple contexts
+interface DataCardProps {
+  title: string;
+  value: string | number;
+  icon?: React.ReactNode;
+  onClick?: () => void;
+}
+
+//  Too specific - Locked to one use case
+interface EnergyCapacityCardProps {
+  energyData: EnergyData;
+  showExportButton: boolean;
+}
+```
+
+**Props for flexibility:**
+- Required props: Only what's absolutely needed
+- Optional props: For common variations
+- Composition props (children, icon, actions): For maximum flexibility
+- No business logic in reusable components
+
+**Module boundaries (when modules integrate):**
+- Each module has `index.ts` exporting public API only
+- Import from module root: `import { Button } from '@/modules/shared'`
+- Never import internal paths: ~~`import { Button } from '@/modules/shared/components/Button'`~~
+
+## Composition Over Props
+
+```tsx
+//  DO THIS - Flexible, easy to modify
+<Modal>
+  <ModalHeader>Delete Item</ModalHeader>
+  <ModalContent>Are you sure?</ModalContent>
+  <ModalActions>
+    <Button>Cancel</Button>
+    <Button variant="danger">Delete</Button>
+  </ModalActions>
+</Modal>
+
+//  NOT THIS - Rigid, hard to change
+<Modal type="delete" showCancel confirmText="Delete" />
+```
+
+## Before You Commit
+
+- [ ] All components under 100 lines
+- [ ] All functions under 20 lines
+- [ ] No `any` types
+- [ ] Props interfaces defined
+- [ ] Names are specific, not generic
+- [ ] No commented code or console.logs
+- [ ] Business logic extracted from components

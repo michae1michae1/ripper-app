@@ -16,6 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Store in KV with TTL
       await kv.set(`event:${event.id}`, JSON.stringify(event), { ex: EVENT_TTL });
       
+      // Also store the code -> id mapping if eventCode exists
+      if (event.eventCode) {
+        await kv.set(`eventCode:${event.eventCode}`, event.id, { ex: EVENT_TTL });
+      }
+      
       return res.status(201).json(event);
     } catch (error) {
       console.error('Error creating event:', error);

@@ -70,6 +70,7 @@ export interface EventSettings {
 
 export interface EventSession {
   id: string;
+  eventCode: string;  // 4-char memorable code for easy sharing (e.g., "WXYZ")
   createdAt: number;
   updatedAt: number;
   type: EventType;

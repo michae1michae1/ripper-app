@@ -132,3 +132,51 @@ export async function verifyPassword(password: string): Promise<boolean> {
     return false;
   }
 }
+
+// Get event by code - with local fallback for dev
+export async function getEventByCode(
+  code: string
+): Promise<ApiResponse<EventSession>> {
+  try {
+    const response = await fetch(`${API_BASE}/event/code/${code.toUpperCase()}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Event not found');
+      }
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to lookup event');
+    }
+    
+    const data = await response.json();
+    return { data };
+  } catch (err) {
+    // Fallback to localStorage in local development - search by code
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, searching localStorage by code');
+      const normalizedCode = code.toUpperCase();
+      
+      // Search all localStorage keys for matching event code
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(LOCAL_STORAGE_PREFIX)) {
+          const eventData = localStorage.getItem(key);
+          if (eventData) {
+            const event = JSON.parse(eventData) as EventSession;
+            if (event.eventCode === normalizedCode) {
+              return { data: event };
+            }
+          }
+        }
+      }
+      return { error: 'Event not found (local)' };
+    }
+    return { error: err instanceof Error ? err.message : 'Network error. Please try again.' };
+  }
+}
+
+// Check if an event code is available
+export async function checkCodeAvailable(code: string): Promise<boolean> {
+  const result = await getEventByCode(code);
+  return !result.data; // Available if no event found with this code
+}

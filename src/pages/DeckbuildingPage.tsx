@@ -6,12 +6,17 @@ import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { getEventSession, updateEventSession } from '@/lib/api';
+import { parseCompositeId, createCompositeId } from '@/lib/generateId';
 import { cn } from '@/lib/cn';
 
 export const DeckbuildingPage = () => {
   const navigate = useNavigate();
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId: rawEventId } = useParams<{ eventId: string }>();
   const [linkCopied, setLinkCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  
+  // Parse composite ID to get the actual event ID
+  const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
   
   const {
     event,
@@ -37,7 +42,9 @@ export const DeckbuildingPage = () => {
   const { minutes, seconds, isRunning, isExpired } = useTimerMinutes(timerState);
 
   useEffect(() => {
-    if (eventId && !event) {
+    // Check if we need to load: no event, or event ID mismatch (switching events)
+    const needsLoad = eventId && (!event || event.id !== eventId);
+    if (needsLoad) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error }) => {
         if (data) {
@@ -50,21 +57,35 @@ export const DeckbuildingPage = () => {
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
 
+  const getCompositeId = () => {
+    if (!event) return '';
+    return createCompositeId(event.eventCode, event.id);
+  };
+
   const handleGoBack = () => {
+    const compositeId = getCompositeId();
     if (event?.type === 'draft') {
-      navigate(`/event/${event.id}/draft`);
+      navigate(`/event/${compositeId}/draft`);
     } else {
       // Sealed - go to admin (requires password)
       clearHostAuth();
-      navigate(`/event/${event?.id}`);
+      navigate(`/event/${compositeId}`);
     }
   };
 
   const handleCopyLink = () => {
-    const shareUrl = `${window.location.origin}/event/${event?.id}/deckbuilding`;
+    const compositeId = getCompositeId();
+    const shareUrl = `${window.location.origin}/event/${compositeId}/deckbuilding`;
     navigator.clipboard.writeText(shareUrl);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleCopyCode = () => {
+    if (!event) return;
+    navigator.clipboard.writeText(event.eventCode);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const handleTimerToggle = useCallback(async () => {
@@ -91,7 +112,7 @@ export const DeckbuildingPage = () => {
     advanceToPhase('rounds');
     generatePairings(1);
     await updateEventSession(event.id, useEventStore.getState().event!);
-    navigate(`/event/${event.id}/round/1`);
+    navigate(`/event/${getCompositeId()}/round/1`);
   };
 
   // Keyboard shortcuts
@@ -129,6 +150,7 @@ export const DeckbuildingPage = () => {
 
   const isDraft = event.type === 'draft';
   const previousLabel = isDraft ? 'Drafting Stage' : 'Event Setup';
+  const compositeId = getCompositeId();
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col">
@@ -160,32 +182,47 @@ export const DeckbuildingPage = () => {
 
       {/* Share Link Bar */}
       <div className="bg-slate/50 border-b border-storm">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-mist">
-            <LinkIcon className="w-4 h-4" />
-            <span>Share this link with players:</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
-              {window.location.origin}/event/{event.id}/deckbuilding
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyLink}
-            >
-              {linkCopied ? (
-                <>
-                  <Check className="w-4 h-4 text-success" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy
-                </>
-              )}
-            </Button>
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-mist">Event Code:</span>
+                <button
+                  onClick={handleCopyCode}
+                  className="flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
+                >
+                  {event.eventCode}
+                  {codeCopied ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-mist" />
+              <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+                {window.location.origin}/event/{compositeId}/deckbuilding
+              </code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyLink}
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="w-4 h-4 text-success" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

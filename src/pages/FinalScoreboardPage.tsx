@@ -5,14 +5,18 @@ import { Button, Badge, Avatar } from '@/components/ui';
 import { useEventStore } from '@/lib/store';
 import { calculateStandings } from '@/lib/swiss';
 import { getEventSession } from '@/lib/api';
+import { parseCompositeId, createCompositeId } from '@/lib/generateId';
 import { MANA_COLORS } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import type { ManaColor } from '@/types/event';
 
 export const FinalScoreboardPage = () => {
   const navigate = useNavigate();
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId: rawEventId } = useParams<{ eventId: string }>();
   const [copied, setCopied] = useState(false);
+  
+  // Parse composite ID to get the actual event ID
+  const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
   
   const {
     event,
@@ -24,7 +28,9 @@ export const FinalScoreboardPage = () => {
   } = useEventStore();
 
   useEffect(() => {
-    if (eventId && !event) {
+    // Check if we need to load: no event, or event ID mismatch (switching events)
+    const needsLoad = eventId && (!event || event.id !== eventId);
+    if (needsLoad) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error }) => {
         if (data) {
@@ -101,6 +107,7 @@ export const FinalScoreboardPage = () => {
   });
 
   const lastRound = event.settings.totalRounds;
+  const compositeId = createCompositeId(event.eventCode, event.id);
 
   return (
     <div className="min-h-screen bg-midnight">
@@ -108,7 +115,7 @@ export const FinalScoreboardPage = () => {
       <header className="border-b border-storm bg-obsidian/50">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
-            onClick={() => navigate(`/event/${event.id}/round/${lastRound}`)}
+            onClick={() => navigate(`/event/${compositeId}/round/${lastRound}`)}
             className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

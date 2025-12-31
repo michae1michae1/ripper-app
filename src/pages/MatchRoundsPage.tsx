@@ -7,12 +7,16 @@ import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { calculateStandings } from '@/lib/swiss';
 import { getEventSession, updateEventSession } from '@/lib/api';
+import { parseCompositeId, createCompositeId } from '@/lib/generateId';
 import type { MatchResult } from '@/types/event';
 
 export const MatchRoundsPage = () => {
   const navigate = useNavigate();
-  const { eventId, roundNum } = useParams<{ eventId: string; roundNum: string }>();
+  const { eventId: rawEventId, roundNum } = useParams<{ eventId: string; roundNum: string }>();
   const [showStandings, setShowStandings] = useState(false);
+  
+  // Parse composite ID to get the actual event ID
+  const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
   
   const roundNumber = parseInt(roundNum || '1', 10);
   
@@ -42,7 +46,9 @@ export const MatchRoundsPage = () => {
   const { minutes, seconds, isRunning } = useTimerMinutes(timerState);
 
   useEffect(() => {
-    if (eventId && !event) {
+    // Check if we need to load: no event, or event ID mismatch (switching events)
+    const needsLoad = eventId && (!event || event.id !== eventId);
+    if (needsLoad) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error }) => {
         if (data) {
@@ -90,19 +96,25 @@ export const MatchRoundsPage = () => {
     finalizeRound();
     await updateEventSession(event.id, useEventStore.getState().event!);
     
+    const compositeId = createCompositeId(event.eventCode, event.id);
     if (isLastRound) {
-      navigate(`/event/${event.id}/results`);
+      navigate(`/event/${compositeId}/results`);
     } else {
       const nextRound = roundNumber + 1;
       generatePairings(nextRound);
       await updateEventSession(event.id, useEventStore.getState().event!);
-      navigate(`/event/${event.id}/round/${nextRound}`);
+      navigate(`/event/${compositeId}/round/${nextRound}`);
     }
   };
 
   const handleSaveAndContinue = async () => {
     if (!event) return;
     await updateEventSession(event.id, event);
+  };
+
+  const getCompositeId = () => {
+    if (!event) return '';
+    return createCompositeId(event.eventCode, event.id);
   };
 
   if (isLoading || !event) {
@@ -113,6 +125,7 @@ export const MatchRoundsPage = () => {
     );
   }
 
+  const compositeId = getCompositeId();
   const standings = calculateStandings(event.players, event.rounds);
   const getPlayer = (playerId: string) => event.players.find(p => p.id === playerId);
   
@@ -134,8 +147,8 @@ export const MatchRoundsPage = () => {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => previousRound 
-              ? navigate(`/event/${event.id}/round/${previousRound}`)
-              : navigate(`/event/${event.id}/deckbuilding`)
+              ? navigate(`/event/${compositeId}/round/${previousRound}`)
+              : navigate(`/event/${compositeId}/deckbuilding`)
             }
             className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
           >
@@ -152,8 +165,8 @@ export const MatchRoundsPage = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => isLastRound 
-                ? navigate(`/event/${event.id}/results`)
-                : navigate(`/event/${event.id}/round/${roundNumber + 1}`)
+                ? navigate(`/event/${compositeId}/results`)
+                : navigate(`/event/${compositeId}/round/${roundNumber + 1}`)
               }
               className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
             >

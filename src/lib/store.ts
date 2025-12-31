@@ -9,7 +9,7 @@ import type {
   MatchResult,
   ManaColor 
 } from '@/types/event';
-import { createEventId, createPlayerId, createMatchId } from './generateId';
+import { createEventId, createEventCode, createPlayerId, createMatchId } from './generateId';
 import { DEFAULT_SETTINGS, SEALED_DECKBUILDING_MINUTES, PACK_PASS_DIRECTION } from './constants';
 
 interface EventStore {
@@ -22,6 +22,7 @@ interface EventStore {
   loadEvent: (event: EventSession) => void;
   clearEvent: () => void;
   resetEvent: () => void;
+  updateEventCode: (newCode: string) => void;
   
   // Player management
   addPlayer: (name: string) => void;
@@ -81,6 +82,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
   createEvent: (type, hostName) => {
     const event: EventSession = {
       id: createEventId(),
+      eventCode: createEventCode(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       type,
@@ -137,6 +139,19 @@ export const useEventStore = create<EventStore>((set, get) => ({
     };
     
     set({ event: resetEvent, error: null });
+  },
+
+  updateEventCode: (newCode) => {
+    const { event } = get();
+    if (!event) return;
+    
+    set({
+      event: {
+        ...event,
+        eventCode: newCode.toUpperCase(),
+        updatedAt: Date.now(),
+      },
+    });
   },
 
   addPlayer: (name) => {

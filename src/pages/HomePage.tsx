@@ -1,9 +1,102 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Sparkles } from 'lucide-react';
+import { Lock, ArrowRight, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { getEventByCode, getEventSession } from '@/lib/api';
+import { parseCompositeId } from '@/lib/generateId';
 
 export const HomePage = () => {
   const navigate = useNavigate();
+  const [joinInput, setJoinInput] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+
+  const handleJoinEvent = async () => {
+    if (!joinInput.trim()) return;
+    
+    setIsJoining(true);
+    setJoinError('');
+    
+    const input = joinInput.trim().toUpperCase();
+    
+    try {
+      // Check if it's a 4-character code
+      if (/^[A-Z0-9]{4}$/.test(input)) {
+        const { data, error } = await getEventByCode(input);
+        if (data) {
+          navigateToEventPhase(data);
+          return;
+        }
+        setJoinError(error || 'Event not found');
+        setIsJoining(false);
+        return;
+      }
+      
+      // Try to parse as a URL or composite ID
+      let eventId = input;
+      
+      // Extract from full URL if pasted
+      const urlMatch = input.match(/\/event\/([A-Z0-9]{4}-[a-z0-9-]+)/i);
+      if (urlMatch) {
+        eventId = urlMatch[1];
+      }
+      
+      // Try to parse composite ID
+      const parsed = parseCompositeId(eventId);
+      if (parsed) {
+        // Use the unique ID part
+        const { data, error } = await getEventSession(parsed.id);
+        if (data) {
+          navigateToEventPhase(data);
+          return;
+        }
+        setJoinError(error || 'Event not found');
+        setIsJoining(false);
+        return;
+      }
+      
+      // Try as a direct event ID
+      const { data, error } = await getEventSession(eventId.toLowerCase());
+      if (data) {
+        navigateToEventPhase(data);
+        return;
+      }
+      
+      setJoinError(error || 'Event not found');
+    } catch (err) {
+      setJoinError('Failed to find event. Please check the code or link.');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const navigateToEventPhase = (event: { id: string; eventCode: string; currentPhase: string; currentRound?: number }) => {
+    const compositeId = `${event.eventCode}-${event.id}`;
+    
+    switch (event.currentPhase) {
+      case 'drafting':
+        navigate(`/event/${compositeId}/draft`);
+        break;
+      case 'deckbuilding':
+        navigate(`/event/${compositeId}/deckbuilding`);
+        break;
+      case 'rounds':
+        navigate(`/event/${compositeId}/round/${event.currentRound || 1}`);
+        break;
+      case 'complete':
+        navigate(`/event/${compositeId}/results`);
+        break;
+      default:
+        // Setup phase - requires admin access
+        navigate(`/event/${compositeId}`);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleJoinEvent();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col">
@@ -40,20 +133,73 @@ export const HomePage = () => {
             Track picks, run timers, and calculate Swiss pairings automatically.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={() => navigate('/new')}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="w-5 h-5" />
-              Create New Event
-            </Button>
+          {/* Two Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-xl mx-auto">
+            {/* Join Event Option */}
+            <div className="bg-obsidian border border-storm rounded-2xl p-6">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Users className="w-5 h-5 text-arcane" />
+                <h2 className="text-lg font-semibold text-snow">Join Event</h2>
+              </div>
+              <p className="text-sm text-mist mb-4">
+                Enter an event code or paste a link
+              </p>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={joinInput}
+                  onChange={(e) => {
+                    setJoinInput(e.target.value);
+                    setJoinError('');
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Code or link..."
+                  className="w-full px-4 py-3 bg-slate border border-storm rounded-xl text-snow placeholder:text-mist focus:outline-none focus:border-arcane transition-colors text-center font-mono uppercase"
+                  maxLength={100}
+                />
+                {joinError && (
+                  <p className="text-danger text-sm">{joinError}</p>
+                )}
+                <Button
+                  onClick={handleJoinEvent}
+                  isLoading={isJoining}
+                  disabled={!joinInput.trim()}
+                  className="w-full"
+                >
+                  Join
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Start as Admin Option */}
+            <div className="bg-obsidian border border-storm rounded-2xl p-6">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Lock className="w-5 h-5 text-warning" />
+                <h2 className="text-lg font-semibold text-snow">Host Event</h2>
+              </div>
+              <p className="text-sm text-mist mb-4">
+                Create and manage a new event
+              </p>
+              <div className="space-y-3">
+                <div className="h-[52px] flex items-center justify-center text-mist text-sm">
+                  Requires admin password
+                </div>
+                <Button
+                  onClick={() => navigate('/admin/new')}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  <Lock className="w-4 h-4" />
+                  Start as Admin
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Features */}
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
           <FeatureCard
             icon="⏱️"
             title="Draft Timers"

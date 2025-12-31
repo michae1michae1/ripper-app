@@ -36,9 +36,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // Verify event exists first
-      const existing = await kv.get(`event:${id}`);
-      if (!existing) {
+      const existingData = await kv.get(`event:${id}`);
+      if (!existingData) {
         return res.status(404).json({ message: 'Event not found' });
+      }
+      
+      const existingEvent = typeof existingData === 'string' ? JSON.parse(existingData) : existingData;
+      
+      // If event code changed, update the mapping
+      if (event.eventCode && event.eventCode !== existingEvent.eventCode) {
+        // Remove old code mapping if it exists
+        if (existingEvent.eventCode) {
+          await kv.del(`eventCode:${existingEvent.eventCode}`);
+        }
+        // Add new code mapping
+        await kv.set(`eventCode:${event.eventCode}`, id, { ex: EVENT_TTL });
+      } else if (event.eventCode) {
+        // Refresh TTL on existing code mapping
+        await kv.set(`eventCode:${event.eventCode}`, id, { ex: EVENT_TTL });
       }
       
       // Update with refreshed TTL

@@ -7,11 +7,16 @@ import { PackIndicator, PassDirectionBadge, PodSeating } from '@/components/draf
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { getEventSession, updateEventSession } from '@/lib/api';
+import { parseCompositeId, createCompositeId } from '@/lib/generateId';
 
 export const DraftPhasePage = () => {
   const navigate = useNavigate();
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId: rawEventId } = useParams<{ eventId: string }>();
   const [linkCopied, setLinkCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  
+  // Parse composite ID to get the actual event ID
+  const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
   
   const {
     event,
@@ -38,7 +43,9 @@ export const DraftPhasePage = () => {
   const { minutes, seconds, isRunning, isExpired } = useTimerMinutes(timerState);
 
   useEffect(() => {
-    if (eventId && !event) {
+    // Check if we need to load: no event, or event ID mismatch (switching events)
+    const needsLoad = eventId && (!event || event.id !== eventId);
+    if (needsLoad) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error }) => {
         if (data) {
@@ -51,17 +58,30 @@ export const DraftPhasePage = () => {
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
 
+  const getCompositeId = () => {
+    if (!event) return '';
+    return createCompositeId(event.eventCode, event.id);
+  };
+
   const handleGoToAdmin = () => {
     // Clear auth so they have to enter password
     clearHostAuth();
-    navigate(`/event/${event?.id}`);
+    navigate(`/event/${getCompositeId()}`);
   };
 
   const handleCopyLink = () => {
-    const shareUrl = `${window.location.origin}/event/${event?.id}/draft`;
+    const compositeId = getCompositeId();
+    const shareUrl = `${window.location.origin}/event/${compositeId}/draft`;
     navigator.clipboard.writeText(shareUrl);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleCopyCode = () => {
+    if (!event) return;
+    navigator.clipboard.writeText(event.eventCode);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const handleTimerToggle = async () => {
@@ -99,7 +119,7 @@ export const DraftPhasePage = () => {
     if (!event) return;
     advanceToPhase('deckbuilding');
     await updateEventSession(event.id, useEventStore.getState().event!);
-    navigate(`/event/${event.id}/deckbuilding`);
+    navigate(`/event/${getCompositeId()}/deckbuilding`);
   };
 
   if (isLoading || !event) {
@@ -111,6 +131,7 @@ export const DraftPhasePage = () => {
   }
 
   const draftState = event.draftState!;
+  const compositeId = getCompositeId();
 
   return (
     <div className="min-h-screen bg-midnight">
@@ -151,32 +172,47 @@ export const DraftPhasePage = () => {
 
       {/* Share Link Bar */}
       <div className="bg-slate/50 border-b border-storm">
-        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-mist">
-            <LinkIcon className="w-4 h-4" />
-            <span>Share this link with players:</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
-              {window.location.origin}/event/{event.id}/draft
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyLink}
-            >
-              {linkCopied ? (
-                <>
-                  <Check className="w-4 h-4 text-success" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy
-                </>
-              )}
-            </Button>
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-mist">Event Code:</span>
+                <button
+                  onClick={handleCopyCode}
+                  className="flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
+                >
+                  {event.eventCode}
+                  {codeCopied ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-mist" />
+              <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+                {window.location.origin}/event/{compositeId}/draft
+              </code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyLink}
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="w-4 h-4 text-success" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

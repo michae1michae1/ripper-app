@@ -6,6 +6,7 @@ import {
   DeckbuildingPage,
   MatchRoundsPage,
   FinalScoreboardPage,
+  AdminNewEventPage,
 } from '@/pages';
 
 export const App = () => {
@@ -13,6 +14,7 @@ export const App = () => {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/admin/new" element={<AdminNewEventPage />} />
         <Route path="/new" element={<EventSetupPage />} />
         <Route path="/event/:eventId" element={<EventSetupPage />} />
         <Route path="/event/:eventId/draft" element={<DraftPhasePage />} />

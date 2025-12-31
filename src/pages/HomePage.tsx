@@ -12,9 +12,9 @@ export const HomePage = () => {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-arcane rounded-xl flex items-center justify-center font-bold text-white">
-              MM
+              RL
             </div>
-            <span className="text-xl font-semibold text-snow">ManaManager</span>
+            <span className="text-xl font-semibold text-snow">Ripper Limit</span>
           </div>
         </div>
       </header>
@@ -95,4 +95,3 @@ const FeatureCard = ({ icon, title, description }: FeatureCardProps) => (
     <p className="text-sm text-mist">{description}</p>
   </div>
 );
-

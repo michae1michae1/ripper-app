@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, Minus, Plus, RotateCcw, Pause, Play } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Sun, Minus, Plus, RotateCcw, Pause, Play, Lock, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { Button, Badge, clearHostAuth } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { PackIndicator, PassDirectionBadge, PodSeating } from '@/components/draft';
 import { useEventStore } from '@/lib/store';
@@ -11,6 +11,7 @@ import { getEventSession, updateEventSession } from '@/lib/api';
 export const DraftPhasePage = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
+  const [linkCopied, setLinkCopied] = useState(false);
   
   const {
     event,
@@ -49,6 +50,19 @@ export const DraftPhasePage = () => {
       });
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
+
+  const handleGoToAdmin = () => {
+    // Clear auth so they have to enter password
+    clearHostAuth();
+    navigate(`/event/${event?.id}`);
+  };
+
+  const handleCopyLink = () => {
+    const shareUrl = `${window.location.origin}/event/${event?.id}/draft`;
+    navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   const handleTimerToggle = async () => {
     if (!event) return;
@@ -105,13 +119,15 @@ export const DraftPhasePage = () => {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(`/event/${event.id}`)}
-              className="p-2 text-mist hover:text-snow transition-colors"
+              onClick={handleGoToAdmin}
+              className="flex items-center gap-2 p-2 text-mist hover:text-snow transition-colors"
+              title="Admin access required"
             >
               <ArrowLeft className="w-5 h-5" />
+              <Lock className="w-4 h-4 text-warning" />
             </button>
             <div>
-              <span className="text-xs text-mist uppercase tracking-wide">Event #{event.id}</span>
+              <span className="text-xs text-mist uppercase tracking-wide">Previous: Event Setup</span>
               <h1 className="font-semibold text-snow">{event.name}: Draft</h1>
             </div>
           </div>
@@ -126,12 +142,44 @@ export const DraftPhasePage = () => {
               className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
             >
               <span>Next</span>
-              <span className="font-medium text-snow">Round 1 Matches</span>
+              <span className="font-medium text-snow">Deckbuilding</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </header>
+
+      {/* Share Link Bar */}
+      <div className="bg-slate/50 border-b border-storm">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-mist">
+            <LinkIcon className="w-4 h-4" />
+            <span>Share this link with players:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+              {window.location.origin}/event/{event.id}/draft
+            </code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyLink}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="w-4 h-4 text-success" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
@@ -249,4 +297,3 @@ export const DraftPhasePage = () => {
     </div>
   );
 };
-

@@ -4,4 +4,5 @@ export { Card } from './Card';
 export { Badge } from './Badge';
 export { Avatar } from './Avatar';
 export { LoadingSpinner, LoadingPage } from './LoadingSpinner';
+export { PasswordKeypad, isHostAuthenticated, clearHostAuth } from './PasswordKeypad';
 

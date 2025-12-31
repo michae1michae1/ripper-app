@@ -293,7 +293,7 @@ export const FinalScoreboardPage = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-mist">
-          <p>© {new Date().getFullYear()} ManaManager. Built for the community.</p>
+          <p>© {new Date().getFullYear()} Ripper Limit. Built for the community.</p>
         </div>
       </main>
     </div>

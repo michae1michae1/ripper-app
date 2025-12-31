@@ -1,7 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, Minus, Plus, RotateCcw, Pause, Play, Settings } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Minus, Plus, RotateCcw, Pause, Play, Settings, Lock, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { Button, clearHostAuth } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn';
 export const DeckbuildingPage = () => {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
+  const [linkCopied, setLinkCopied] = useState(false);
   
   const {
     event,
@@ -48,6 +49,23 @@ export const DeckbuildingPage = () => {
       });
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
+
+  const handleGoBack = () => {
+    if (event?.type === 'draft') {
+      navigate(`/event/${event.id}/draft`);
+    } else {
+      // Sealed - go to admin (requires password)
+      clearHostAuth();
+      navigate(`/event/${event?.id}`);
+    }
+  };
+
+  const handleCopyLink = () => {
+    const shareUrl = `${window.location.origin}/event/${event?.id}/deckbuilding`;
+    navigator.clipboard.writeText(shareUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   const handleTimerToggle = useCallback(async () => {
     if (!event) return;
@@ -104,14 +122,13 @@ export const DeckbuildingPage = () => {
     );
   }
 
-  const previousPath = event.type === 'draft'
-    ? `/event/${event.id}/draft`
-    : `/event/${event.id}`;
-
   // Progress bar
   const totalDuration = event.settings.deckbuildingMinutes * 60;
   const elapsed = totalDuration - (minutes * 60 + seconds);
   const progress = Math.min(100, (elapsed / totalDuration) * 100);
+
+  const isDraft = event.type === 'draft';
+  const previousLabel = isDraft ? 'Drafting Stage' : 'Event Setup';
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col">
@@ -119,13 +136,13 @@ export const DeckbuildingPage = () => {
       <header className="border-b border-storm bg-obsidian/50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
-            onClick={() => navigate(previousPath)}
+            onClick={handleGoBack}
             className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
           >
-            <span className="text-xs text-mist uppercase">Previous Stage</span>
-            <span className="font-medium text-snow">
-              {event.type === 'draft' ? 'Drafting stage' : 'Event Setup'}
-            </span>
+            <ArrowLeft className="w-4 h-4" />
+            {!isDraft && <Lock className="w-4 h-4 text-warning" />}
+            <span className="text-xs text-mist uppercase">Previous</span>
+            <span className="font-medium text-snow">{previousLabel}</span>
           </button>
           
           <span className="text-sm text-mist uppercase tracking-wider">Deckbuilding Stage</span>
@@ -140,6 +157,38 @@ export const DeckbuildingPage = () => {
           </button>
         </div>
       </header>
+
+      {/* Share Link Bar */}
+      <div className="bg-slate/50 border-b border-storm">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-mist">
+            <LinkIcon className="w-4 h-4" />
+            <span>Share this link with players:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+              {window.location.origin}/event/{event.id}/deckbuilding
+            </code>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyLink}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="w-4 h-4 text-success" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content - Centered Timer */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
@@ -246,4 +295,3 @@ export const DeckbuildingPage = () => {
     </div>
   );
 };
-

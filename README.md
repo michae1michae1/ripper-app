@@ -1,4 +1,4 @@
-# ManaManager - MTG Event Manager
+# Ripper Limit - MTG Event Manager
 
 A web application for running Magic: The Gathering draft and sealed events. Manage player registration, track draft picks with timers, run Swiss-style pairings, and generate final standings.
 

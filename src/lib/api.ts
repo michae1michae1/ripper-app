@@ -1,10 +1,24 @@
 import type { EventSession } from '@/types/event';
 
 const API_BASE = '/api';
+const LOCAL_STORAGE_PREFIX = 'ripper_event:';
+
+// Check if we're in local development mode (Vite dev server)
+const isLocalDev = import.meta.env.DEV;
 
 interface ApiResponse<T> {
   data?: T;
   error?: string;
+}
+
+// Local storage helpers for development fallback
+function saveToLocalStorage(eventId: string, event: EventSession): void {
+  localStorage.setItem(`${LOCAL_STORAGE_PREFIX}${eventId}`, JSON.stringify(event));
+}
+
+function getFromLocalStorage(eventId: string): EventSession | null {
+  const data = localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${eventId}`);
+  return data ? JSON.parse(data) : null;
 }
 
 export async function createEventSession(
@@ -19,12 +33,18 @@ export async function createEventSession(
     
     if (!response.ok) {
       const error = await response.json();
-      return { error: error.message || 'Failed to create event' };
+      throw new Error(error.message || 'Failed to create event');
     }
     
     const data = await response.json();
     return { data };
   } catch (err) {
+    // Fallback to localStorage in local development
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, using localStorage fallback');
+      saveToLocalStorage(event.id, event);
+      return { data: event };
+    }
     return { error: 'Network error. Please try again.' };
   }
 }
@@ -37,16 +57,25 @@ export async function getEventSession(
     
     if (!response.ok) {
       if (response.status === 404) {
-        return { error: 'Event not found' };
+        throw new Error('Event not found');
       }
       const error = await response.json();
-      return { error: error.message || 'Failed to load event' };
+      throw new Error(error.message || 'Failed to load event');
     }
     
     const data = await response.json();
     return { data };
   } catch (err) {
-    return { error: 'Network error. Please try again.' };
+    // Fallback to localStorage in local development
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, using localStorage fallback');
+      const localEvent = getFromLocalStorage(eventId);
+      if (localEvent) {
+        return { data: localEvent };
+      }
+      return { error: 'Event not found (local)' };
+    }
+    return { error: err instanceof Error ? err.message : 'Network error. Please try again.' };
   }
 }
 
@@ -63,13 +92,43 @@ export async function updateEventSession(
     
     if (!response.ok) {
       const error = await response.json();
-      return { error: error.message || 'Failed to update event' };
+      throw new Error(error.message || 'Failed to update event');
     }
     
     const data = await response.json();
     return { data };
   } catch (err) {
+    // Fallback to localStorage in local development
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, using localStorage fallback');
+      saveToLocalStorage(eventId, event);
+      return { data: event };
+    }
     return { error: 'Network error. Please try again.' };
   }
 }
 
+// Verify password - with local fallback for dev
+export async function verifyPassword(password: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE}/verify-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to verify password');
+    }
+    
+    const data = await response.json();
+    return data.valid === true;
+  } catch (err) {
+    // In local dev, accept "0117" as the password
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, using local password check');
+      return password === '0117';
+    }
+    return false;
+  }
+}

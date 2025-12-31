@@ -21,6 +21,7 @@ interface EventStore {
   createEvent: (type: EventType, hostName: string) => EventSession;
   loadEvent: (event: EventSession) => void;
   clearEvent: () => void;
+  resetEvent: () => void;
   
   // Player management
   addPlayer: (name: string) => void;
@@ -113,6 +114,29 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   clearEvent: () => {
     set({ event: null, error: null });
+  },
+
+  resetEvent: () => {
+    const { event } = get();
+    if (!event) return;
+    
+    // Keep the same ID and players, but reset all progress
+    const resetEvent: EventSession = {
+      ...event,
+      currentPhase: 'setup',
+      currentRound: 0,
+      draftState: event.type === 'draft' ? createInitialDraftState() : null,
+      deckbuildingState: null,
+      rounds: [],
+      // Reset player match history but keep names and seat numbers
+      players: event.players.map(p => ({
+        ...p,
+        deckColors: undefined,
+      })),
+      updatedAt: Date.now(),
+    };
+    
+    set({ event: resetEvent, error: null });
   },
 
   addPlayer: (name) => {

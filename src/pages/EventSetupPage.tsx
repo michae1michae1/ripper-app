@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Link as LinkIcon, Copy, Check } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
+import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Button, PasswordKeypad, isHostAuthenticated } from '@/components/ui';
 import { EventTypeSelector, PlayerList } from '@/components/event';
 import { useEventStore } from '@/lib/store';
 import { createEventSession, getEventSession, updateEventSession } from '@/lib/api';
@@ -14,8 +14,9 @@ export const EventSetupPage = () => {
   const [eventType, setEventType] = useState<EventType>('draft');
   const [hostName, setHostName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [showHostInput, setShowHostInput] = useState(!eventId);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   const {
     event,
@@ -25,15 +26,26 @@ export const EventSetupPage = () => {
     removePlayer,
     randomizeSeating,
     startEvent,
+    resetEvent,
     setLoading,
     setError,
     isLoading,
     error,
   } = useEventStore();
 
-  // Load existing event if eventId is provided
+  // Check if already authenticated on mount
   useEffect(() => {
-    if (eventId && !event) {
+    if (eventId) {
+      setIsAuthenticated(isHostAuthenticated());
+    } else {
+      // New event creation doesn't need password
+      setIsAuthenticated(true);
+    }
+  }, [eventId]);
+
+  // Load existing event if eventId is provided and authenticated
+  useEffect(() => {
+    if (eventId && !event && isAuthenticated) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error: apiError }) => {
         if (data) {
@@ -43,7 +55,30 @@ export const EventSetupPage = () => {
         }
       });
     }
-  }, [eventId, event, loadEvent, setLoading, setError]);
+  }, [eventId, event, loadEvent, setLoading, setError, isAuthenticated]);
+
+  const handlePasswordSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleGoBack = () => {
+    // Go back to current phase based on event state
+    if (event) {
+      if (event.currentPhase === 'drafting') {
+        navigate(`/event/${event.id}/draft`);
+      } else if (event.currentPhase === 'deckbuilding') {
+        navigate(`/event/${event.id}/deckbuilding`);
+      } else if (event.currentPhase === 'rounds') {
+        navigate(`/event/${event.id}/round/${event.currentRound}`);
+      } else if (event.currentPhase === 'complete') {
+        navigate(`/event/${event.id}/results`);
+      } else {
+        navigate('/');
+      }
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleCreateEvent = async () => {
     if (!hostName.trim()) return;
@@ -95,14 +130,28 @@ export const EventSetupPage = () => {
     navigate(nextPath);
   };
 
-  const handleCopyLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+  const handleResetEvent = async () => {
+    if (!event) return;
+    resetEvent();
+    await updateEventSession(event.id, useEventStore.getState().event!);
+    setShowResetConfirm(false);
   };
 
   const canStart = event && event.players.length >= MIN_PLAYERS;
+  const hasProgress = event && event.currentPhase !== 'setup';
+
+  // Show password keypad for existing events if not authenticated
+  if (eventId && !isAuthenticated) {
+    // We need to load event first to know where "Go Back" should go
+    // But we load it minimally just to check current phase
+    return (
+      <PasswordKeypad
+        onSuccess={handlePasswordSuccess}
+        onGoBack={handleGoBack}
+        showGoBack={event?.currentPhase !== 'setup'}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -170,32 +219,10 @@ export const EventSetupPage = () => {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-arcane rounded-lg flex items-center justify-center font-bold text-white text-sm">
-              MM
+              RL
             </div>
-            <span className="font-semibold text-snow">ManaManager</span>
+            <span className="font-semibold text-snow">Ripper Limit</span>
           </div>
-          
-          {event && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-slate rounded-full px-3 py-1.5">
-                <LinkIcon className="w-4 h-4 text-mist" />
-                <span className="text-sm text-silver font-mono">
-                  {window.location.host}/j/{event.id}
-                </span>
-                <button
-                  onClick={handleCopyLink}
-                  className="p-1 hover:bg-storm rounded transition-colors"
-                >
-                  {linkCopied ? (
-                    <Check className="w-4 h-4 text-success" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-mist" />
-                  )}
-                </button>
-              </div>
-              <Badge variant="success">Link Generated</Badge>
-            </div>
-          )}
         </div>
       </header>
 
@@ -206,10 +233,22 @@ export const EventSetupPage = () => {
           className="flex items-center gap-2 text-mist hover:text-snow transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Events
+          Back to Home
         </button>
 
-        <h1 className="text-3xl font-bold text-snow mb-8">Event Setup</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-snow">Event Setup</h1>
+          {event && (
+            <Button
+              variant="ghost"
+              onClick={() => setShowResetConfirm(true)}
+              className="text-mist hover:text-danger"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Event
+            </Button>
+          )}
+        </div>
 
         {event && (
           <div className="space-y-8">
@@ -258,7 +297,55 @@ export const EventSetupPage = () => {
           </div>
         </footer>
       )}
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-obsidian border border-storm rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-danger/20 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-danger" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-snow">Reset Event?</h2>
+                <p className="text-sm text-mist">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-silver mb-6">
+              This will reset all progress including:
+            </p>
+            <ul className="text-mist text-sm space-y-1 mb-6 ml-4">
+              <li>• All rounds and match results</li>
+              <li>• Draft/deckbuilding progress</li>
+              <li>• Timer states</li>
+              {hasProgress && (
+                <li className="text-warning">• Current phase: {event?.currentPhase}</li>
+              )}
+            </ul>
+            <p className="text-silver mb-6">
+              Players will be kept but the event will return to setup.
+            </p>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleResetEvent}
+                className="flex-1 bg-danger hover:bg-danger/80"
+              >
+                Yes, Reset Event
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

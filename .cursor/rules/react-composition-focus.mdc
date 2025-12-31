@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 ## Hard Rules - NO EXCEPTIONS
 
 1. Components max 100 lines. Over 100? Extract sub-components immediately.

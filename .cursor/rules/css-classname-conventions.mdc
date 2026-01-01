@@ -1,0 +1,170 @@
+---
+alwaysApply: true
+---
+## CSS & Classname Conventions
+
+This project uses a hybrid approach: **semantic BEM-style classes** for structure/debugging combined with **Tailwind utilities** for styling.
+
+### Data Attributes - REQUIRED
+
+Every page and significant component MUST have identifying data attributes:
+
+```tsx
+// Pages - data-page attribute
+<div data-page="DraftPhasePage" className="draft-page ...">
+
+// Components - data-component attribute
+<div data-component="MatchCard" data-match-id={match.id} className="match-card ...">
+
+// State attributes for debugging
+<div 
+  data-component="TimerDisplay"
+  data-state={isRunning ? 'running' : 'paused'}
+  data-timer-value={remainingSeconds}
+>
+```
+
+### BEM-Style Class Naming
+
+Use Block__Element--Modifier pattern for semantic classes:
+
+```tsx
+// Block: The component root
+className="match-card ..."
+
+// Element: Part of the component (use double underscore)
+className="match-card__header ..."
+className="match-card__score-display ..."
+className="match-card__player-name ..."
+
+// Modifier: Variation of block or element (use double dash)
+className="match-card--highlighted ..."
+className="match-card__score-display--winner ..."
+```
+
+### Class Order Convention
+
+Order classes consistently: **semantic first, then Tailwind utilities**
+
+```tsx
+// ✅ CORRECT - Semantic class first, then utilities
+className="match-card__header flex items-center justify-between p-4"
+
+// ❌ WRONG - Utilities first
+className="flex items-center justify-between p-4 match-card__header"
+```
+
+### Required Patterns by Component Type
+
+**Pages:**
+```tsx
+<div 
+  data-page="PageName"
+  data-state="loading" // or "ready", "error", etc.
+  className="page-name min-h-screen ..."
+>
+  <header className="page-name__header ...">
+  <main className="page-name__main ...">
+  <footer className="page-name__footer ...">
+</div>
+```
+
+**Interactive Components:**
+```tsx
+<div 
+  data-component="ComponentName"
+  data-selected={isSelected || undefined}
+  data-disabled={isDisabled || undefined}
+  className="component-name ..."
+>
+  <div className="component-name__content ...">
+  <button className="component-name__action component-name__action--primary ...">
+</div>
+```
+
+**List Items:**
+```tsx
+<div 
+  data-component="PlayerListItem"
+  data-player-id={player.id}
+  data-index={index}
+  className="player-list-item ..."
+>
+```
+
+### Naming Guidelines
+
+**DO:**
+- Use lowercase with hyphens for class names: `match-card`, `timer-display`
+- Use descriptive names that explain purpose: `score-controls`, `player-record`
+- Include state modifiers: `--active`, `--disabled`, `--winner`, `--loading`
+- Use data attributes for dynamic values: `data-table={tableNumber}`
+
+**DON'T:**
+- Use generic names: ~~`container`~~, ~~`wrapper`~~, ~~`box`~~
+- Use camelCase in class names: ~~`matchCard`~~
+- Use positional names alone: ~~`left-section`~~ → use `player-a-section`
+- Mix semantic and utility in same position inconsistently
+
+### State Classes
+
+Use CSS classes for visual states, data attributes for JavaScript hooks:
+
+```tsx
+// Visual styling via class
+className={cn(
+  'match-card__player',
+  isWinner && 'match-card__player--winner'
+)}
+
+// JavaScript hooks via data attribute  
+data-winner={isWinner || undefined}
+```
+
+### Conditional Classes with cn()
+
+Always use the `cn()` utility for conditional classes:
+
+```tsx
+import { cn } from '@/lib/cn';
+
+className={cn(
+  'base-class',
+  'always-applied-utilities',
+  condition && 'conditional-class',
+  variant === 'primary' && 'variant--primary'
+)}
+```
+
+### Component Sections
+
+Large components should have clearly named sections:
+
+```tsx
+<div data-component="DraftPage" className="draft-page">
+  {/* Header Section */}
+  <header data-section="header" className="draft-page__header">
+  
+  {/* Main Content */}
+  <main data-section="content" className="draft-page__content">
+    
+    {/* Pod Display */}
+    <section data-section="pod" className="draft-page__pod-section">
+    
+    {/* Timer Display */}  
+    <section data-section="timer" className="draft-page__timer-section">
+    
+    {/* Event Log */}
+    <section data-section="event-log" className="draft-page__log-section">
+  </main>
+</div>
+```
+
+### Before You Commit
+
+- [ ] All pages have `data-page` attribute
+- [ ] All components have `data-component` attribute
+- [ ] Semantic BEM classes come before Tailwind utilities
+- [ ] State variations use `--modifier` suffix
+- [ ] Dynamic values use data attributes, not class names
+- [ ] No generic class names (container, wrapper, box)

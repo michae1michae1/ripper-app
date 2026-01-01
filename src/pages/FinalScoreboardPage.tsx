@@ -232,15 +232,18 @@ export const FinalScoreboardPage = () => {
                         onClick={() => toggleDeckColor(player.id, color)}
                         className={cn(
                           'scoreboard-page__color-btn',
-                          'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-                          MANA_COLORS[color].bg,
-                          MANA_COLORS[color].text,
+                          'w-7 h-7 rounded-full flex items-center justify-center transition-all',
                           player.deckColors?.includes(color)
-                            ? 'opacity-100 ring-2 ring-arcane ring-offset-2 ring-offset-midnight'
+                            ? 'opacity-100'
                             : 'opacity-30 hover:opacity-60'
                         )}
+                        title={MANA_COLORS[color].name}
                       >
-                        {color}
+                        <img 
+                          src={MANA_COLORS[color].svg} 
+                          alt={MANA_COLORS[color].name}
+                          className="w-6 h-6"
+                        />
                       </button>
                     ))}
                   </div>
@@ -283,12 +286,11 @@ export const FinalScoreboardPage = () => {
           <div className="scoreboard-page__legend-left flex items-center gap-4">
             <div className="scoreboard-page__legend-colors flex items-center gap-2">
               {(['W', 'U', 'B', 'R', 'G'] as ManaColor[]).map((color) => (
-                <div
+                <img
                   key={color}
-                  className={cn(
-                    'scoreboard-page__legend-color-dot w-4 h-4 rounded-full',
-                    MANA_COLORS[color].bg
-                  )}
+                  src={MANA_COLORS[color].svg}
+                  alt={MANA_COLORS[color].name}
+                  className="scoreboard-page__legend-color-icon w-4 h-4"
                 />
               ))}
               <span className="scoreboard-page__legend-colors-label">Deck Colors</span>

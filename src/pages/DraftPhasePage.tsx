@@ -171,17 +171,20 @@ export const DraftPhasePage = () => {
   const isDraftComplete = draftState.isComplete;
 
   // Status for navbar badge
+  // When timer is hidden (!timerEnabled), treat as "in progress" since timer is not relevant
   const getStatusColor = () => {
     if (isDraftComplete) return 'bg-success';
     if (!draftStarted) return 'bg-warning';
-    if (isRunning) return 'bg-cyan-400';
+    // If timer is disabled, always show "in progress" color
+    if (!timerEnabled || isRunning) return 'bg-cyan-400';
     return 'bg-danger';
   };
 
   const getStatusText = () => {
     if (isDraftComplete) return 'Draft Complete';
     if (!draftStarted) return 'Start Draft';
-    if (isRunning) return 'Draft In Progress';
+    // If timer is disabled, always show "in progress" status
+    if (!timerEnabled || isRunning) return 'Draft In Progress';
     return 'Paused';
   };
 
@@ -505,21 +508,46 @@ export const DraftPhasePage = () => {
           <h3 className="draft-page__event-log-title text-xs font-semibold text-mist uppercase tracking-wide">
             Event Log
           </h3>
-          <div className="draft-page__event-log-entries flex items-center gap-6 text-sm text-mist overflow-x-auto pb-2">
-            <div className="draft-page__event-log-entry flex items-center gap-2 whitespace-nowrap">
-              <span className="draft-page__event-log-time text-xs text-mist/60">
-                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-              <span className="draft-page__event-log-indicator w-2 h-2 bg-arcane rounded-full" />
-              <span className="draft-page__event-log-message">
-                {!draftStarted 
-                  ? 'Waiting to start draft...' 
-                  : isDraftComplete
-                    ? 'Draft complete. Ready for deckbuilding.'
-                    : `Pack ${draftState.currentPack} in progress.`
-                }
-              </span>
-            </div>
+          <div className="draft-page__event-log-entries flex items-center gap-6 text-sm text-mist overflow-x-auto pb-2 hide-scrollbar">
+            {draftState.eventLog.length === 0 ? (
+              <div className="draft-page__event-log-entry flex items-center gap-2 whitespace-nowrap">
+                <span className="draft-page__event-log-time text-xs text-mist/60">
+                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="draft-page__event-log-indicator w-2 h-2 bg-warning rounded-full animate-pulse" />
+                <span className="draft-page__event-log-message">Waiting to start draft...</span>
+              </div>
+            ) : (
+              [...draftState.eventLog].reverse().map((entry) => (
+                <div 
+                  key={entry.id} 
+                  className="draft-page__event-log-entry flex items-center gap-2 whitespace-nowrap"
+                  data-log-type={entry.type}
+                >
+                  <span className="draft-page__event-log-time text-xs text-mist/60">
+                    {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className={cn(
+                    'draft-page__event-log-indicator w-2 h-2 rounded-full',
+                    entry.type === 'draft_started' && 'bg-success',
+                    entry.type === 'draft_completed' && 'bg-success',
+                    entry.type === 'pack_started' && 'bg-arcane',
+                    entry.type === 'pack_completed' && 'bg-cyan-400',
+                    entry.type === 'timer_paused' && 'bg-warning',
+                    entry.type === 'timer_resumed' && 'bg-success',
+                    entry.type === 'timer_adjusted' && 'bg-mist'
+                  )} />
+                  <span className="draft-page__event-log-message">
+                    {entry.message}
+                    {entry.data?.duration !== undefined && (
+                      <span className="text-mist/60 ml-1">
+                        ({Math.floor(entry.data.duration / 60)}:{String(entry.data.duration % 60).padStart(2, '0')})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </main>

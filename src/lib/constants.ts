@@ -8,11 +8,11 @@ export const DEFAULT_SETTINGS = {
 export const SEALED_DECKBUILDING_MINUTES = 45;
 
 export const MANA_COLORS = {
-  W: { name: 'White', bg: 'bg-mana-white', text: 'text-slate-900' },
-  U: { name: 'Blue', bg: 'bg-mana-blue', text: 'text-white' },
-  B: { name: 'Black', bg: 'bg-mana-black', text: 'text-white' },
-  R: { name: 'Red', bg: 'bg-mana-red', text: 'text-white' },
-  G: { name: 'Green', bg: 'bg-mana-green', text: 'text-white' },
+  W: { name: 'White', bg: 'bg-mana-white', text: 'text-slate-900', svg: 'https://svgs.scryfall.io/card-symbols/W.svg' },
+  U: { name: 'Blue', bg: 'bg-mana-blue', text: 'text-white', svg: 'https://svgs.scryfall.io/card-symbols/U.svg' },
+  B: { name: 'Black', bg: 'bg-mana-black', text: 'text-white', svg: 'https://svgs.scryfall.io/card-symbols/B.svg' },
+  R: { name: 'Red', bg: 'bg-mana-red', text: 'text-white', svg: 'https://svgs.scryfall.io/card-symbols/R.svg' },
+  G: { name: 'Green', bg: 'bg-mana-green', text: 'text-white', svg: 'https://svgs.scryfall.io/card-symbols/G.svg' },
 } as const;
 
 export const PACK_PASS_DIRECTION = {

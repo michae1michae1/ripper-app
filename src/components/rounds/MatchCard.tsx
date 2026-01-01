@@ -1,6 +1,6 @@
 import { Minus, Plus } from 'lucide-react';
 import { Button, Badge, EditablePlayerName } from '@/components/ui';
-import type { Match, MatchResult, Player } from '@/types/event';
+import type { Match, MatchResult, Player, PlayerStanding } from '@/types/event';
 import { cn } from '@/lib/cn';
 
 interface MatchCardProps {
@@ -9,6 +9,7 @@ interface MatchCardProps {
   playerA: Player;
   playerB: Player | null;
   onUpdateResult: (result: MatchResult) => void;
+  standings?: PlayerStanding[];
 }
 
 export const MatchCard = ({
@@ -17,6 +18,7 @@ export const MatchCard = ({
   playerA,
   playerB,
   onUpdateResult,
+  standings = [],
 }: MatchCardProps) => {
   const result = match.result;
   const isBye = playerB === null;
@@ -87,7 +89,7 @@ export const MatchCard = ({
             size="md"
           />
           <p className="match-card__player-record text-xs text-mist">
-            {getPlayerRecord(playerA)}
+            {getPlayerRecord(playerA.id, standings)}
           </p>
         </div>
 
@@ -185,7 +187,7 @@ export const MatchCard = ({
                 size="md"
               />
               <p className="match-card__player-record text-xs text-mist">
-                {getPlayerRecord(playerB)}
+                {getPlayerRecord(playerB.id, standings)}
               </p>
             </div>
           )}
@@ -195,8 +197,11 @@ export const MatchCard = ({
   );
 };
 
-function getPlayerRecord(_player: Player): string {
-  // This would ideally come from standings
-  return '0 points (0-0-0)';
+function getPlayerRecord(playerId: string, standings: PlayerStanding[]): string {
+  const standing = standings.find(s => s.playerId === playerId);
+  if (!standing) {
+    return '0 pts (0-0-0)';
+  }
+  return `${standing.points} pts (${standing.wins}-${standing.losses}-${standing.draws})`;
 }
 

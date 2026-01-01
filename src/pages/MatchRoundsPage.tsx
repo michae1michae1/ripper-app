@@ -8,6 +8,7 @@ import { useTimerMinutes } from '@/hooks/useTimer';
 import { calculateStandings } from '@/lib/swiss';
 import { getEventSession, updateEventSession } from '@/lib/api';
 import { parseCompositeId, createCompositeId } from '@/lib/generateId';
+import { cn } from '@/lib/cn';
 import type { MatchResult } from '@/types/event';
 
 export const MatchRoundsPage = () => {
@@ -229,55 +230,46 @@ export const MatchRoundsPage = () => {
 
       {/* Main Content */}
       <main className="rounds-page__main max-w-4xl mx-auto px-4 py-8">
-        {/* Round Header */}
-        <div className="rounds-page__round-header flex items-start justify-between mb-8">
-          <div className="rounds-page__round-info">
-            <div className="rounds-page__round-title-row flex items-center gap-3 mb-2">
-              <h1 className="rounds-page__round-title text-4xl font-bold text-snow">
-                Round {roundNumber} of {event.settings.totalRounds}
-              </h1>
-            </div>
-            <p className="rounds-page__round-subtitle text-mist">
-              Swiss Pairing System • {event.players.length} Players
-            </p>
-          </div>
-          
-          <div className="rounds-page__round-actions flex items-center gap-3">
-            {/* Timer */}
-            <button
-              onClick={handleTimerToggle}
-              className="rounds-page__timer-btn flex items-center gap-2 bg-slate rounded-full px-4 py-2 hover:bg-storm transition-colors"
-            >
-              <Clock className="w-4 h-4 text-mist" />
-              <span className="rounds-page__timer-display font-mono text-snow">
-                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-              </span>
-              <span className="rounds-page__timer-label text-xs text-mist">remaining</span>
-            </button>
-            
-            {/* Standings */}
-            <Button
-              variant="secondary"
-              onClick={() => setShowStandings(true)}
-              className="rounds-page__standings-btn"
-            >
-              <BarChart3 className="w-4 h-4" />
-              Standings
-            </Button>
-          </div>
-        </div>
-
         {/* Matches */}
         <div 
           data-section="matches"
           className="rounds-page__matches-container bg-obsidian border border-storm rounded-xl overflow-hidden"
         >
-          {/* Table Header */}
-          <div className="rounds-page__matches-header grid grid-cols-[60px_1fr_auto_1fr] gap-4 px-4 py-3 bg-slate/50 text-xs text-mist uppercase tracking-wide">
-            <span className="rounds-page__matches-header-table">Table</span>
-            <span className="rounds-page__matches-header-player-a">Player A</span>
-            <span className="rounds-page__matches-header-result text-center">Result</span>
-            <span className="rounds-page__matches-header-player-b text-right">Player B</span>
+          {/* Integrated Header - Round info, Timer, Standings */}
+          <div className="rounds-page__matches-header px-4 py-4 bg-slate/50 flex items-center justify-between">
+            <h1 className="rounds-page__round-title text-2xl font-bold text-snow">
+              Round {roundNumber} of {event.settings.totalRounds}
+            </h1>
+            
+            <div className="rounds-page__header-actions flex items-center gap-3">
+              {/* Timer */}
+              <Button
+                variant="secondary"
+                onClick={handleTimerToggle}
+                className="rounds-page__timer-btn"
+              >
+                <Clock className={cn("w-4 h-4", isRunning && "text-success animate-pulse")} />
+                <span className={cn(
+                  "rounds-page__timer-display font-mono",
+                  isRunning ? "text-snow" : "text-mist"
+                )}>
+                  {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                </span>
+                <span className="text-xs text-mist">
+                  {isRunning ? 'Running' : 'Paused'}
+                </span>
+              </Button>
+              
+              {/* Standings */}
+              <Button
+                variant="secondary"
+                onClick={() => setShowStandings(true)}
+                className="rounds-page__standings-btn"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Standings
+              </Button>
+            </div>
           </div>
           
           {/* Matches */}
@@ -296,6 +288,7 @@ export const MatchRoundsPage = () => {
                   playerA={playerA}
                   playerB={playerB ?? null}
                   onUpdateResult={(result) => handleUpdateResult(match.id, result)}
+                  standings={standings}
                 />
               );
             })}

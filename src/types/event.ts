@@ -17,6 +17,27 @@ export interface Player {
   deckColors?: ManaColor[];
 }
 
+export type DraftLogType = 
+  | 'draft_started'
+  | 'pack_started' 
+  | 'pack_completed' 
+  | 'timer_paused' 
+  | 'timer_resumed' 
+  | 'timer_adjusted'
+  | 'draft_completed';
+
+export interface DraftLogEntry {
+  id: string;
+  timestamp: number;
+  type: DraftLogType;
+  message: string;
+  data?: {
+    pack?: number;
+    duration?: number; // seconds for pack duration
+    adjustment?: number; // seconds for timer adjustment
+  };
+}
+
 export interface DraftState {
   currentPack: 1 | 2 | 3;
   passDirection: 'left' | 'right';
@@ -25,6 +46,8 @@ export interface DraftState {
   timerDuration: number; // seconds per pick
   isPaused: boolean;
   isComplete: boolean; // true when draft is finished (all 3 packs done)
+  packStartedAt: number | null; // timestamp when current pack started
+  eventLog: DraftLogEntry[];
 }
 
 export interface MatchResult {

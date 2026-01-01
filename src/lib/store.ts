@@ -5,6 +5,8 @@ import type {
   Player, 
   EventPhase,
   DraftState,
+  DraftLogEntry,
+  DraftLogType,
   Round,
   MatchResult,
   ManaColor 
@@ -40,6 +42,7 @@ interface EventStore {
   nextPack: () => void;
   setCurrentPack: (pack: 1 | 2 | 3) => void;
   markDraftComplete: () => void;
+  addDraftLogEntry: (type: DraftLogType, message: string, data?: DraftLogEntry['data']) => void;
   
   // Timer controls
   startTimer: () => void;
@@ -58,6 +61,20 @@ interface EventStore {
   setError: (error: string | null) => void;
 }
 
+function createDraftLogEntry(
+  type: DraftLogType, 
+  message: string, 
+  data?: DraftLogEntry['data']
+): DraftLogEntry {
+  return {
+    id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    timestamp: Date.now(),
+    type,
+    message,
+    data,
+  };
+}
+
 function createInitialDraftState(): DraftState {
   return {
     currentPack: 1,
@@ -67,6 +84,8 @@ function createInitialDraftState(): DraftState {
     timerDuration: DEFAULT_SETTINGS.draftPickSeconds,
     isPaused: true,
     isComplete: false,
+    packStartedAt: null,
+    eventLog: [],
   };
 }
 
@@ -343,6 +362,26 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const { event } = get();
     if (!event?.draftState) return;
     
+    const prevPack = event.draftState.currentPack;
+    const newLogEntries: DraftLogEntry[] = [];
+    
+    // If switching from a previous pack that was started, log its completion
+    if (event.draftState.packStartedAt && pack !== prevPack) {
+      const packDuration = Math.floor((Date.now() - event.draftState.packStartedAt) / 1000);
+      newLogEntries.push(createDraftLogEntry(
+        'pack_completed',
+        `Pack ${prevPack} completed`,
+        { pack: prevPack, duration: packDuration }
+      ));
+    }
+    
+    // Log new pack start
+    newLogEntries.push(createDraftLogEntry(
+      'pack_started',
+      `Pack ${pack} started`,
+      { pack }
+    ));
+    
     // Reset timer to default duration and auto-start when switching packs
     set({
       event: {
@@ -358,6 +397,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
           isPaused: false,
           // Unmark complete if going back to earlier pack
           isComplete: false,
+          // Track when this pack started
+          packStartedAt: Date.now(),
+          eventLog: [...event.draftState.eventLog, ...newLogEntries],
         },
         updatedAt: Date.now(),
       },
@@ -368,6 +410,28 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const { event } = get();
     if (!event?.draftState) return;
     
+    // Calculate pack 3 duration if it was started
+    const packDuration = event.draftState.packStartedAt 
+      ? Math.floor((Date.now() - event.draftState.packStartedAt) / 1000)
+      : null;
+    
+    const newLogEntries: DraftLogEntry[] = [];
+    
+    // Add pack completion log if pack was started
+    if (packDuration !== null) {
+      newLogEntries.push(createDraftLogEntry(
+        'pack_completed',
+        `Pack 3 completed`,
+        { pack: 3, duration: packDuration }
+      ));
+    }
+    
+    // Add draft completed log
+    newLogEntries.push(createDraftLogEntry(
+      'draft_completed',
+      'Draft complete. Ready for deckbuilding.'
+    ));
+    
     set({
       event: {
         ...event,
@@ -375,6 +439,26 @@ export const useEventStore = create<EventStore>((set, get) => ({
           ...event.draftState,
           isComplete: true,
           isPaused: true,
+          packStartedAt: null,
+          eventLog: [...event.draftState.eventLog, ...newLogEntries],
+        },
+        updatedAt: Date.now(),
+      },
+    });
+  },
+
+  addDraftLogEntry: (type, message, data) => {
+    const { event } = get();
+    if (!event?.draftState) return;
+    
+    const logEntry = createDraftLogEntry(type, message, data);
+    
+    set({
+      event: {
+        ...event,
+        draftState: {
+          ...event.draftState,
+          eventLog: [...event.draftState.eventLog, logEntry],
         },
         updatedAt: Date.now(),
       },
@@ -386,15 +470,33 @@ export const useEventStore = create<EventStore>((set, get) => ({
     if (!event) return;
     
     if (event.currentPhase === 'drafting' && event.draftState) {
+      const isFirstStart = event.draftState.timerStartedAt === null;
+      const now = Date.now();
+      
+      const newLogEntries: DraftLogEntry[] = [];
+      if (isFirstStart) {
+        newLogEntries.push(createDraftLogEntry(
+          'draft_started',
+          'Draft started'
+        ));
+        newLogEntries.push(createDraftLogEntry(
+          'pack_started',
+          'Pack 1 started',
+          { pack: 1 }
+        ));
+      }
+      
       set({
         event: {
           ...event,
           draftState: {
             ...event.draftState,
-            timerStartedAt: Date.now(),
+            timerStartedAt: now,
             isPaused: false,
+            packStartedAt: isFirstStart ? now : event.draftState.packStartedAt,
+            eventLog: [...event.draftState.eventLog, ...newLogEntries],
           },
-          updatedAt: Date.now(),
+          updatedAt: now,
         },
       });
     } else if (event.currentPhase === 'deckbuilding' && event.deckbuildingState) {
@@ -437,6 +539,8 @@ export const useEventStore = create<EventStore>((set, get) => ({
     if (!event) return;
     
     if (event.currentPhase === 'drafting' && event.draftState) {
+      const logEntry = createDraftLogEntry('timer_paused', 'Timer paused');
+      
       set({
         event: {
           ...event,
@@ -444,6 +548,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
             ...event.draftState,
             timerPausedAt: Date.now(),
             isPaused: true,
+            eventLog: [...event.draftState.eventLog, logEntry],
           },
           updatedAt: Date.now(),
         },
@@ -492,6 +597,8 @@ export const useEventStore = create<EventStore>((set, get) => ({
         ? event.draftState.timerPausedAt - event.draftState.timerStartedAt
         : 0;
       
+      const logEntry = createDraftLogEntry('timer_resumed', 'Timer resumed');
+      
       set({
         event: {
           ...event,
@@ -500,6 +607,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
             timerStartedAt: Date.now() - pausedDuration,
             timerPausedAt: null,
             isPaused: false,
+            eventLog: [...event.draftState.eventLog, logEntry],
           },
           updatedAt: Date.now(),
         },
@@ -555,12 +663,21 @@ export const useEventStore = create<EventStore>((set, get) => ({
     if (!event) return;
     
     if (event.currentPhase === 'drafting' && event.draftState) {
+      const direction = seconds > 0 ? 'added' : 'removed';
+      const absSeconds = Math.abs(seconds);
+      const logEntry = createDraftLogEntry(
+        'timer_adjusted', 
+        `${absSeconds}s ${direction}`,
+        { adjustment: seconds }
+      );
+      
       set({
         event: {
           ...event,
           draftState: {
             ...event.draftState,
             timerDuration: Math.max(10, event.draftState.timerDuration + seconds),
+            eventLog: [...event.draftState.eventLog, logEntry],
           },
           updatedAt: Date.now(),
         },

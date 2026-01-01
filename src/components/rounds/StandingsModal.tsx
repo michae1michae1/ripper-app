@@ -1,5 +1,5 @@
 import { X, Trophy } from 'lucide-react';
-import { Button, Avatar, Badge } from '@/components/ui';
+import { Button, Avatar, Badge, EditablePlayerName } from '@/components/ui';
 import type { PlayerStanding, Player } from '@/types/event';
 import { cn } from '@/lib/cn';
 
@@ -84,7 +84,12 @@ export const StandingsModal = ({
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <Avatar name={player.name} size="sm" />
-                        <span className="font-medium text-snow">{player.name}</span>
+                        <EditablePlayerName
+                          playerId={player.id}
+                          name={player.name}
+                          className="font-medium text-snow"
+                          size="sm"
+                        />
                       </div>
                     </td>
                     <td className="py-3 px-4 text-center">

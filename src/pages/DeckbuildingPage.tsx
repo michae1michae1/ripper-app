@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Minus, Plus, RotateCcw, Pause, Play, Settings, Lock, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Sun, Home } from 'lucide-react';
 import { Button, clearHostAuth } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';
@@ -24,7 +24,7 @@ export const DeckbuildingPage = () => {
     startTimer,
     pauseTimer,
     resumeTimer,
-    resetTimer,
+    adjustTimer,
     advanceToPhase,
     generatePairings,
     setLoading,
@@ -35,11 +35,14 @@ export const DeckbuildingPage = () => {
   const timerState = event?.deckbuildingState ? {
     startedAt: event.deckbuildingState.timerStartedAt,
     pausedAt: event.deckbuildingState.timerPausedAt,
-    duration: event.settings.deckbuildingMinutes * 60,
+    duration: event.deckbuildingState.timerDuration,
     isPaused: event.deckbuildingState.isPaused,
   } : null;
   
   const { minutes, seconds, isRunning, isExpired } = useTimerMinutes(timerState);
+
+  // Track if deckbuilding has been started (timer started at least once)
+  const deckbuildingStarted = event?.deckbuildingState?.timerStartedAt !== null;
 
   useEffect(() => {
     // Check if we need to load: no event, or event ID mismatch (switching events)
@@ -73,6 +76,10 @@ export const DeckbuildingPage = () => {
     }
   };
 
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
   const handleCopyLink = () => {
     const compositeId = getCompositeId();
     const shareUrl = `${window.location.origin}/event/${compositeId}/deckbuilding`;
@@ -88,24 +95,28 @@ export const DeckbuildingPage = () => {
     setTimeout(() => setCodeCopied(false), 2000);
   };
 
-  const handleTimerToggle = useCallback(async () => {
+  const handleStartDeckbuilding = async () => {
     if (!event) return;
+    startTimer();
+    await updateEventSession(event.id, useEventStore.getState().event!);
+  };
+
+  const handleTimerToggle = useCallback(async () => {
+    if (!event || !deckbuildingStarted) return;
     
     if (isRunning) {
       pauseTimer();
-    } else if (event.deckbuildingState?.timerStartedAt) {
-      resumeTimer();
     } else {
-      startTimer();
+      resumeTimer();
     }
     await updateEventSession(event.id, useEventStore.getState().event!);
-  }, [event, isRunning, pauseTimer, resumeTimer, startTimer]);
+  }, [event, deckbuildingStarted, isRunning, pauseTimer, resumeTimer]);
 
-  const handleReset = useCallback(async () => {
-    if (!event) return;
-    resetTimer();
+  const handleAdjust = async (secs: number) => {
+    if (!event || !deckbuildingStarted) return;
+    adjustTimer(secs);
     await updateEventSession(event.id, useEventStore.getState().event!);
-  }, [event, resetTimer]);
+  };
 
   const handleAdvanceToRounds = async () => {
     if (!event) return;
@@ -122,18 +133,15 @@ export const DeckbuildingPage = () => {
         return;
       }
       
-      if (e.code === 'Space') {
+      if (e.code === 'Space' && deckbuildingStarted) {
         e.preventDefault();
         handleTimerToggle();
-      } else if (e.code === 'Escape') {
-        e.preventDefault();
-        handleReset();
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleTimerToggle, handleReset]);
+  }, [handleTimerToggle, deckbuildingStarted]);
 
   if (isLoading || !event) {
     return (
@@ -143,40 +151,92 @@ export const DeckbuildingPage = () => {
     );
   }
 
-  // Progress bar
-  const totalDuration = event.settings.deckbuildingMinutes * 60;
-  const elapsed = totalDuration - (minutes * 60 + seconds);
-  const progress = Math.min(100, (elapsed / totalDuration) * 100);
-
   const isDraft = event.type === 'draft';
-  const previousLabel = isDraft ? 'Drafting Stage' : 'Event Setup';
+  const previousLabel = isDraft ? 'Drafting' : 'Event Setup';
   const compositeId = getCompositeId();
+
+  // Status for navbar badge
+  const getStatusColor = () => {
+    if (!deckbuildingStarted) return 'bg-warning';
+    if (isExpired) return 'bg-success';
+    if (isRunning) return 'bg-cyan-400';
+    return 'bg-danger';
+  };
+
+  const getStatusText = () => {
+    if (!deckbuildingStarted) return 'Start Deckbuilding';
+    if (isExpired) return 'Time Complete';
+    if (isRunning) return 'Building Decks';
+    return 'Paused';
+  };
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col">
       {/* Header */}
       <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={handleGoBack}
-            className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {!isDraft && <Lock className="w-4 h-4 text-warning" />}
-            <span className="text-xs text-mist uppercase">Previous</span>
-            <span className="font-medium text-snow">{previousLabel}</span>
-          </button>
-          
-          <span className="text-sm text-mist uppercase tracking-wider">Deckbuilding Stage</span>
-          
-          <button
-            onClick={handleAdvanceToRounds}
-            className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
-          >
-            <span className="text-xs text-mist uppercase">Next</span>
-            <span className="font-medium text-snow">Round 1 Matches</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between relative">
+            {/* Left: Previous + Home */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleGoBack}
+                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                title={!isDraft ? "Admin access required" : undefined}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {!isDraft && <Lock className="w-3 h-3 text-warning" />}
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">{previousLabel}</span>
+              </button>
+              <button
+                onClick={handleGoHome}
+                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                title="Go to Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Center: Status badge - clickable to start deckbuilding */}
+            <button
+              onClick={!deckbuildingStarted ? handleStartDeckbuilding : undefined}
+              className={cn(
+                "flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full transition-all",
+                !deckbuildingStarted && "bg-warning/20 hover:bg-warning/30 cursor-pointer",
+                deckbuildingStarted && "cursor-default"
+              )}
+            >
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                getStatusColor(),
+                !deckbuildingStarted && "animate-pulse",
+                isRunning && "animate-pulse"
+              )} />
+              <span className={cn(
+                "text-sm uppercase tracking-widest font-semibold",
+                !deckbuildingStarted && "text-warning",
+                isExpired && "text-success",
+                deckbuildingStarted && !isExpired && isRunning && "text-cyan-400",
+                deckbuildingStarted && !isExpired && !isRunning && "text-danger"
+              )}>
+                {getStatusText()}
+              </span>
+            </button>
+            
+            {/* Right: Theme + Next Round */}
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon">
+                <Sun className="w-5 h-5" />
+              </Button>
+              <button
+                onClick={handleAdvanceToRounds}
+                className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
+              >
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">Next</span>
+                <span className="font-medium text-snow hidden sm:inline">Round 1</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -229,103 +289,68 @@ export const DeckbuildingPage = () => {
 
       {/* Main Content - Centered Timer */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
-        {/* Timer Mode Toggle */}
-        <div className="bg-slate rounded-full p-1 mb-8">
-          <div className="flex">
-            <button
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                event.type === 'draft'
-                  ? 'bg-arcane text-white'
-                  : 'text-mist hover:text-snow'
-              )}
-            >
-              Draft (30m)
-            </button>
-            <button
-              className={cn(
-                'px-4 py-2 rounded-full text-sm font-medium transition-colors',
-                event.type === 'sealed'
-                  ? 'bg-arcane text-white'
-                  : 'text-mist hover:text-snow'
-              )}
-            >
-              Sealed (45m)
-            </button>
+        {/* Timer Section - Same style as Draft page */}
+        <div className="bg-obsidian rounded-xl p-8 shadow-lg shadow-black/20">
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleAdjust(-60)}
+                title="Remove 1 minute"
+                className="text-mist hover:text-snow w-12 h-12"
+                disabled={!deckbuildingStarted}
+              >
+                <Minus className="w-6 h-6" />
+              </Button>
+              
+              <button
+                onClick={handleTimerToggle}
+                disabled={!deckbuildingStarted}
+                className={cn(
+                  "relative group",
+                  deckbuildingStarted && "cursor-pointer"
+                )}
+              >
+                <TimerDisplay
+                  minutes={minutes}
+                  seconds={seconds}
+                  size="xl"
+                  isExpired={isExpired}
+                />
+                {/* Play/Pause overlay - only show when deckbuilding started */}
+                {deckbuildingStarted && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
+                    {isRunning ? (
+                      <Pause className="w-12 h-12 text-white" />
+                    ) : (
+                      <Play className="w-12 h-12 text-white" />
+                    )}
+                  </div>
+                )}
+              </button>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleAdjust(60)}
+                title="Add 1 minute"
+                className="text-mist hover:text-snow w-12 h-12"
+                disabled={!deckbuildingStarted}
+              >
+                <Plus className="w-6 h-6" />
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {/* Large Timer */}
-        <TimerDisplay
-          minutes={minutes}
-          seconds={seconds}
-          size="xl"
-          isExpired={isExpired}
-        />
-
-        {/* Progress Bar */}
-        <div className="w-full max-w-lg mt-8 mb-12">
-          <div className="h-1.5 bg-storm rounded-full overflow-hidden">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-1000',
-                isExpired ? 'bg-danger' : 'bg-arcane'
-              )}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="bg-slate/50 rounded-2xl p-2 flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate rounded-lg p-1">
-            <Button variant="ghost" size="icon" title="Remove 1 minute">
-              <Minus className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" title="Add 1 minute">
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-          
-          <div className="w-px h-8 bg-storm" />
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleReset}
-            title="Reset timer (Esc)"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-          
-          <Button
-            variant="primary"
-            onClick={handleTimerToggle}
-            className="w-14 h-14 rounded-full p-0"
-          >
-            {isRunning ? (
-              <Pause className="w-6 h-6" />
-            ) : (
-              <Play className="w-6 h-6 ml-1" />
-            )}
-          </Button>
-          
-          <Button variant="ghost" size="icon" title="Settings">
-            <Settings className="w-4 h-4" />
-          </Button>
         </div>
       </main>
 
       {/* Footer - Keyboard hints */}
       <footer className="border-t border-storm bg-obsidian/50 py-3">
-        <div className="max-w-6xl mx-auto px-4 flex justify-end gap-4">
+        <div className="max-w-6xl mx-auto px-4 flex justify-center">
           <div className="flex items-center gap-2 text-xs text-mist">
             <kbd className="px-2 py-0.5 bg-slate rounded border border-storm font-mono">Space</kbd>
-            <span>to pause</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-mist">
-            <kbd className="px-2 py-0.5 bg-slate rounded border border-storm font-mono">Esc</kbd>
-            <span>to reset</span>
+            <span>to pause/resume</span>
           </div>
         </div>
       </footer>

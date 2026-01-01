@@ -1,5 +1,5 @@
 import { Minus, Plus } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, EditablePlayerName } from '@/components/ui';
 import type { Match, MatchResult, Player } from '@/types/event';
 import { cn } from '@/lib/cn';
 
@@ -47,7 +47,7 @@ export const MatchCard = ({
   const playerBWins = result && !result.isDraw && result.playerBWins > result.playerAWins;
 
   return (
-    <div className="bg-obsidian border border-storm rounded-xl p-4">
+    <div className="bg-obsidian border border-storm p-4">
       <div className="flex items-center justify-between">
         {/* Table Number */}
         <div className="w-8 text-center">
@@ -59,12 +59,15 @@ export const MatchCard = ({
           'flex-1 text-left pl-4',
           playerAWins && 'text-success'
         )}>
-          <p className={cn(
-            'font-medium',
-            playerAWins ? 'text-success' : 'text-snow'
-          )}>
-            {playerA.name}
-          </p>
+          <EditablePlayerName
+            playerId={playerA.id}
+            name={playerA.name}
+            className={cn(
+              'font-medium',
+              playerAWins ? 'text-success' : 'text-snow'
+            )}
+            size="md"
+          />
           <p className="text-xs text-mist">
             {getPlayerRecord(playerA)}
           </p>
@@ -151,17 +154,20 @@ export const MatchCard = ({
               <p className="text-sm text-mist">NO OPPONENT</p>
             </>
           ) : (
-            <>
-              <p className={cn(
-                'font-medium',
-                playerBWins ? 'text-success' : 'text-snow'
-              )}>
-                {playerB.name}
-              </p>
+            <div className="flex flex-col items-end">
+              <EditablePlayerName
+                playerId={playerB.id}
+                name={playerB.name}
+                className={cn(
+                  'font-medium',
+                  playerBWins ? 'text-success' : 'text-snow'
+                )}
+                size="md"
+              />
               <p className="text-xs text-mist">
                 {getPlayerRecord(playerB)}
               </p>
-            </>
+            </div>
           )}
         </div>
       </div>

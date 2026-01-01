@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, Minus, Plus, RotateCcw, Pause, Play, Lock, Link as LinkIcon, Copy, Check } from 'lucide-react';
-import { Button, Badge, clearHostAuth } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Sun, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2 } from 'lucide-react';
+import { Button, clearHostAuth } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
-import { PackIndicator, PassDirectionBadge, PodSeating } from '@/components/draft';
+import { PodSeating } from '@/components/draft';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { getEventSession, updateEventSession } from '@/lib/api';
 import { parseCompositeId, createCompositeId } from '@/lib/generateId';
+import { cn } from '@/lib/cn';
 
 export const DraftPhasePage = () => {
   const navigate = useNavigate();
   const { eventId: rawEventId } = useParams<{ eventId: string }>();
   const [linkCopied, setLinkCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [timerEnabled, setTimerEnabled] = useState(true);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -25,8 +27,8 @@ export const DraftPhasePage = () => {
     pauseTimer,
     resumeTimer,
     adjustTimer,
-    resetTimer,
-    nextPack,
+    setCurrentPack,
+    markDraftComplete,
     advanceToPhase,
     setLoading,
     setError,
@@ -41,6 +43,9 @@ export const DraftPhasePage = () => {
   } : null;
   
   const { minutes, seconds, isRunning, isExpired } = useTimerMinutes(timerState);
+
+  // Track if draft has been started (timer started at least once)
+  const draftStarted = event?.draftState?.timerStartedAt !== null;
 
   useEffect(() => {
     // Check if we need to load: no event, or event ID mismatch (switching events)
@@ -64,9 +69,12 @@ export const DraftPhasePage = () => {
   };
 
   const handleGoToAdmin = () => {
-    // Clear auth so they have to enter password
     clearHostAuth();
     navigate(`/event/${getCompositeId()}`);
+  };
+
+  const handleGoHome = () => {
+    navigate('/');
   };
 
   const handleCopyLink = () => {
@@ -84,39 +92,62 @@ export const DraftPhasePage = () => {
     setTimeout(() => setCodeCopied(false), 2000);
   };
 
-  const handleTimerToggle = async () => {
+  const handleStartDraft = async () => {
     if (!event) return;
+    if (timerEnabled) {
+      startTimer();
+    } else {
+      // When timer disabled, just mark as started without running timer
+      startTimer();
+      pauseTimer();
+    }
+    await updateEventSession(event.id, useEventStore.getState().event!);
+  };
+
+  const handleTimerToggle = async () => {
+    if (!event || !draftStarted) return;
     
     if (isRunning) {
       pauseTimer();
-    } else if (event.draftState?.timerStartedAt) {
-      resumeTimer();
     } else {
-      startTimer();
+      resumeTimer();
     }
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
   const handleAdjust = async (secs: number) => {
-    if (!event) return;
+    if (!event || !draftStarted) return;
     adjustTimer(secs);
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
-  const handleReset = async () => {
-    if (!event) return;
-    resetTimer();
+  const handleSetPack = async (pack: 1 | 2 | 3) => {
+    if (!event || !draftStarted) return;
+    setCurrentPack(pack);
+    // If timer is disabled, pause immediately after switching
+    if (!timerEnabled) {
+      pauseTimer();
+    }
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
-  const handleNextPack = async () => {
-    if (!event) return;
-    nextPack();
+  const handleToggleTimerEnabled = () => {
+    setTimerEnabled(!timerEnabled);
+    // If disabling timer while running, pause it
+    if (timerEnabled && isRunning && event) {
+      pauseTimer();
+      updateEventSession(event.id, useEventStore.getState().event!);
+    }
+  };
+
+  const handleMarkDraftComplete = async () => {
+    if (!event || !draftStarted || draftState.currentPack !== 3) return;
+    markDraftComplete();
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
-  const handleSkipToDeckbuilding = async () => {
-    if (!event) return;
+  const handleMoveToDeckbuilding = async () => {
+    if (!event || !draftState.isComplete) return;
     advanceToPhase('deckbuilding');
     await updateEventSession(event.id, useEventStore.getState().event!);
     navigate(`/event/${getCompositeId()}/deckbuilding`);
@@ -132,40 +163,99 @@ export const DraftPhasePage = () => {
 
   const draftState = event.draftState!;
   const compositeId = getCompositeId();
+  const isOnPack3 = draftState.currentPack === 3;
+  const isDraftComplete = draftState.isComplete;
+
+  // Status for navbar badge
+  const getStatusColor = () => {
+    if (isDraftComplete) return 'bg-success';
+    if (!draftStarted) return 'bg-warning';
+    if (isRunning) return 'bg-cyan-400';
+    return 'bg-danger';
+  };
+
+  const getStatusText = () => {
+    if (isDraftComplete) return 'Draft Complete';
+    if (!draftStarted) return 'Start Draft';
+    if (isRunning) return 'Draft In Progress';
+    return 'Paused';
+  };
 
   return (
     <div className="min-h-screen bg-midnight">
       {/* Header */}
       <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleGoToAdmin}
-              className="flex items-center gap-2 p-2 text-mist hover:text-snow transition-colors"
-              title="Admin access required"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <Lock className="w-4 h-4 text-warning" />
-            </button>
-            <div>
-              <span className="text-xs text-mist uppercase tracking-wide">Previous: Event Setup</span>
-              <h1 className="font-semibold text-snow">{event.name}: Draft</h1>
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between relative">
+            {/* Left: Previous + Home */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleGoToAdmin}
+                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                title="Admin access required"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <Lock className="w-3 h-3 text-warning" />
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">Event Setup</span>
+              </button>
+              <button
+                onClick={handleGoHome}
+                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                title="Go to Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-mist uppercase tracking-wider">Drafting Stage</span>
-            <Button variant="ghost" size="icon">
-              <Sun className="w-5 h-5" />
-            </Button>
+            
+            {/* Center: Status badge - clickable to start draft */}
             <button
-              onClick={handleSkipToDeckbuilding}
-              className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
+              onClick={!draftStarted ? handleStartDraft : undefined}
+              className={cn(
+                "flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full transition-all",
+                !draftStarted && "bg-warning/20 hover:bg-warning/30 cursor-pointer",
+                draftStarted && "cursor-default"
+              )}
             >
-              <span>Next</span>
-              <span className="font-medium text-snow">Deckbuilding</span>
-              <ArrowRight className="w-4 h-4" />
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                getStatusColor(),
+                !draftStarted && "animate-pulse",
+                isRunning && "animate-pulse"
+              )} />
+              <span className={cn(
+                "text-sm uppercase tracking-widest font-semibold",
+                !draftStarted && "text-warning",
+                isDraftComplete && "text-success",
+                draftStarted && !isDraftComplete && isRunning && "text-cyan-400",
+                draftStarted && !isDraftComplete && !isRunning && "text-danger"
+              )}>
+                {getStatusText()}
+              </span>
             </button>
+            
+            {/* Right: Theme + Next Deckbuilding */}
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon">
+                <Sun className="w-5 h-5" />
+              </Button>
+              <button
+                onClick={handleMoveToDeckbuilding}
+                disabled={!isDraftComplete}
+                className={cn(
+                  "flex items-center gap-2 text-sm transition-colors",
+                  isDraftComplete
+                    ? "text-mist hover:text-snow" 
+                    : "text-mist/40 cursor-not-allowed"
+                )}
+              >
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">Next</span>
+                <span className={cn(
+                  "font-medium hidden sm:inline",
+                  isDraftComplete ? "text-snow" : "text-mist/40"
+                )}>Deckbuilding</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -219,117 +309,188 @@ export const DraftPhasePage = () => {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        {/* Timer Section */}
-        <div className="bg-obsidian border border-storm rounded-xl p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-4">
-              <Badge variant="success" className="animate-pulse-soft">
-                <span className="w-2 h-2 bg-success rounded-full mr-2" />
-                DRAFTING NOW
-              </Badge>
-              
-              <PackIndicator currentPack={draftState.currentPack} />
-              
-              <PassDirectionBadge direction={draftState.passDirection} />
+        {/* Timer Section - Modern clean design with drop shadow */}
+        <div className="bg-obsidian rounded-xl p-6 shadow-lg shadow-black/20">
+          {/* Pack Breadcrumb - Full Width */}
+          <div className="flex items-center mb-4">
+            {/* Timer Toggle - Left of Pack 1 */}
+            <button
+              onClick={handleToggleTimerEnabled}
+              className={cn(
+                "p-2 rounded-lg transition-all mr-4",
+                timerEnabled 
+                  ? "bg-arcane/20 text-arcane hover:bg-arcane/30" 
+                  : "bg-slate text-mist/50 hover:text-mist"
+              )}
+              title={timerEnabled ? "Timer enabled - click to disable" : "Timer disabled - click to enable"}
+            >
+              <Clock className="w-5 h-5" />
+            </button>
+
+            {/* Pack 1 - Text size changes when active */}
+            <button
+              onClick={() => handleSetPack(1)}
+              disabled={!draftStarted}
+              className={cn(
+                "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
+                draftState.currentPack === 1 && draftStarted && "text-xl text-snow",
+                draftState.currentPack !== 1 && draftStarted && "text-sm text-mist hover:text-snow",
+                !draftStarted && "text-sm text-mist/50 cursor-default"
+              )}
+            >
+              Pack 1
+            </button>
+            
+            {/* Connector line 1 - flex-1 to stretch */}
+            <div className="flex-1 mx-4">
+              <div
+                className={cn(
+                  'h-0.5 rounded-full transition-colors',
+                  draftState.currentPack > 1 ? 'bg-arcane' : 'bg-storm'
+                )}
+              />
             </div>
             
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center">
-                <TimerDisplay
-                  minutes={minutes}
-                  seconds={seconds}
-                  size="lg"
-                  isExpired={isExpired}
-                />
-                <p className="text-sm text-mist mt-2 uppercase tracking-wider">Time Remaining</p>
-              </div>
+            {/* Pack 2 - Text size changes when active */}
+            <button
+              onClick={() => handleSetPack(2)}
+              disabled={!draftStarted}
+              className={cn(
+                "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
+                draftState.currentPack === 2 && "text-xl text-snow",
+                draftState.currentPack !== 2 && draftStarted && "text-sm text-mist hover:text-snow",
+                !draftStarted && "text-sm text-mist/50 cursor-default"
+              )}
+            >
+              Pack 2
+            </button>
+            
+            {/* Connector line 2 - flex-1 to stretch */}
+            <div className="flex-1 mx-4">
+              <div
+                className={cn(
+                  'h-0.5 rounded-full transition-colors',
+                  draftState.currentPack > 2 ? 'bg-arcane' : 'bg-storm'
+                )}
+              />
             </div>
             
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-slate rounded-lg p-1">
+            {/* Pack 3 - Text size changes when active */}
+            <button
+              onClick={() => handleSetPack(3)}
+              disabled={!draftStarted}
+              className={cn(
+                "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
+                draftState.currentPack === 3 && "text-xl text-snow",
+                draftState.currentPack !== 3 && draftStarted && "text-sm text-mist hover:text-snow",
+                !draftStarted && "text-sm text-mist/50 cursor-default"
+              )}
+            >
+              Pack 3
+            </button>
+
+            {/* Draft Complete Button - Right of Pack 3 */}
+            <button
+              onClick={handleMarkDraftComplete}
+              disabled={!draftStarted || !isOnPack3 || isDraftComplete}
+              className={cn(
+                "p-2 rounded-full transition-all ml-4",
+                isDraftComplete && "bg-success/20 text-success",
+                !isDraftComplete && isOnPack3 && draftStarted && "bg-slate text-mist hover:text-snow hover:bg-slate/80",
+                (!isOnPack3 || !draftStarted) && !isDraftComplete && "bg-slate/50 text-mist/30 cursor-not-allowed"
+              )}
+              title={isDraftComplete ? "Draft complete" : isOnPack3 ? "Mark draft as complete" : "Complete Pack 3 first"}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Timer Area - Only show when timer is enabled */}
+          {timerEnabled && (
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-6">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleAdjust(-10)}
                   title="Remove 10 seconds"
+                  className="text-mist hover:text-snow w-12 h-12"
+                  disabled={!draftStarted}
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-6 h-6" />
                 </Button>
+                
+                <button
+                  onClick={handleTimerToggle}
+                  disabled={!draftStarted}
+                  className={cn(
+                    "relative group",
+                    draftStarted && "cursor-pointer"
+                  )}
+                >
+                  <TimerDisplay
+                    minutes={minutes}
+                    seconds={seconds}
+                    size="lg"
+                    isExpired={isExpired}
+                  />
+                  {/* Play/Pause overlay - only show when draft started */}
+                  {draftStarted && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
+                      {isRunning ? (
+                        <Pause className="w-12 h-12 text-white" />
+                      ) : (
+                        <Play className="w-12 h-12 text-white" />
+                      )}
+                    </div>
+                  )}
+                </button>
+                
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleAdjust(10)}
                   title="Add 10 seconds"
+                  className="text-mist hover:text-snow w-12 h-12"
+                  disabled={!draftStarted}
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-6 h-6" />
                 </Button>
               </div>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleReset}
-                title="Reset timer"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-              
-              <Button
-                variant="primary"
-                onClick={handleTimerToggle}
-                className="px-6"
-              >
-                {isRunning ? (
-                  <>
-                    <Pause className="w-4 h-4" />
-                    Pause Draft
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Start Draft
-                  </>
-                )}
-              </Button>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Pod Seating */}
+        {/* Pod Seating - includes pass direction */}
         <PodSeating
           players={event.players}
           passDirection={draftState.passDirection}
         />
 
-        {/* Event Log */}
-        <div className="bg-obsidian border border-storm rounded-xl p-4">
-          <h3 className="text-xs font-semibold text-mist uppercase tracking-wide mb-3">
+        {/* Event Log - Clean design without container */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-mist uppercase tracking-wide">
             Event Log
           </h3>
-          <div className="flex items-center gap-4 text-sm text-mist overflow-x-auto">
+          <div className="flex items-center gap-6 text-sm text-mist overflow-x-auto pb-2">
             <div className="flex items-center gap-2 whitespace-nowrap">
               <span className="text-xs text-mist/60">
-                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
               <span className="w-2 h-2 bg-arcane rounded-full" />
-              <span>Pack {draftState.currentPack} started.</span>
+              <span>
+                {!draftStarted 
+                  ? 'Waiting to start draft...' 
+                  : isDraftComplete
+                    ? 'Draft complete. Ready for deckbuilding.'
+                    : `Pack ${draftState.currentPack} in progress.`
+                }
+              </span>
             </div>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-center gap-4">
-          {draftState.currentPack < 3 && (
-            <Button variant="secondary" onClick={handleNextPack}>
-              Complete Pack {draftState.currentPack} → Start Pack {draftState.currentPack + 1}
-            </Button>
-          )}
-          <Button variant="primary" onClick={handleSkipToDeckbuilding}>
-            Skip to Deckbuilding
-            <ArrowRight className="w-4 h-4" />
-          </Button>
         </div>
       </main>
     </div>
   );
 };
+

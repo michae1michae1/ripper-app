@@ -24,6 +24,7 @@ export interface DraftState {
   timerPausedAt: number | null;
   timerDuration: number; // seconds per pick
   isPaused: boolean;
+  isComplete: boolean; // true when draft is finished (all 3 packs done)
 }
 
 export interface MatchResult {
@@ -82,6 +83,7 @@ export interface EventSession {
   deckbuildingState: {
     timerStartedAt: number | null;
     timerPausedAt: number | null;
+    timerDuration: number; // seconds
     isPaused: boolean;
   } | null;
   rounds: Round[];

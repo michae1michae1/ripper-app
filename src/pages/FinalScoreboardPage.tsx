@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Share2, Download, Trophy, Sun } from 'lucide-react';
-import { Button, Badge, Avatar } from '@/components/ui';
+import { Button, Badge, Avatar, EditablePlayerName } from '@/components/ui';
 import { useEventStore } from '@/lib/store';
 import { calculateStandings } from '@/lib/swiss';
 import { getEventSession } from '@/lib/api';
@@ -216,7 +216,12 @@ export const FinalScoreboardPage = () => {
                   <div className="flex items-center gap-3">
                     <Avatar name={player.name} size="md" />
                     <div>
-                      <p className="font-semibold text-snow">{player.name}</p>
+                      <EditablePlayerName
+                        playerId={player.id}
+                        name={player.name}
+                        className="font-semibold text-snow"
+                        size="md"
+                      />
                       {player.deckColors && player.deckColors.length > 0 && (
                         <p className="text-xs text-mist">
                           {player.deckColors.map(c => MANA_COLORS[c].name).join(' ')}

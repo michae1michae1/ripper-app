@@ -27,6 +27,7 @@ interface EventStore {
   // Player management
   addPlayer: (name: string) => void;
   removePlayer: (playerId: string) => void;
+  updatePlayerName: (playerId: string, name: string) => void;
   randomizeSeating: () => void;
   setPlayerDeckColors: (playerId: string, colors: ManaColor[]) => void;
   
@@ -36,6 +37,8 @@ interface EventStore {
   
   // Draft controls
   nextPack: () => void;
+  setCurrentPack: (pack: 1 | 2 | 3) => void;
+  markDraftComplete: () => void;
   
   // Timer controls
   startTimer: () => void;
@@ -62,6 +65,7 @@ function createInitialDraftState(): DraftState {
     timerPausedAt: null,
     timerDuration: DEFAULT_SETTINGS.draftPickSeconds,
     isPaused: true,
+    isComplete: false,
   };
 }
 
@@ -194,6 +198,24 @@ export const useEventStore = create<EventStore>((set, get) => ({
     });
   },
 
+  updatePlayerName: (playerId, name) => {
+    const { event } = get();
+    if (!event) return;
+    
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    
+    set({
+      event: {
+        ...event,
+        players: event.players.map(p => 
+          p.id === playerId ? { ...p, name: trimmedName } : p
+        ),
+        updatedAt: Date.now(),
+      },
+    });
+  },
+
   randomizeSeating: () => {
     const { event } = get();
     if (!event) return;
@@ -240,6 +262,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
         deckbuildingState: nextPhase === 'deckbuilding' ? {
           timerStartedAt: null,
           timerPausedAt: null,
+          timerDuration: event.settings.deckbuildingMinutes * 60,
           isPaused: true,
         } : null,
         updatedAt: Date.now(),
@@ -260,6 +283,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
       updates.deckbuildingState = {
         timerStartedAt: null,
         timerPausedAt: null,
+        timerDuration: event.settings.deckbuildingMinutes * 60,
         isPaused: true,
       };
     }
@@ -291,6 +315,48 @@ export const useEventStore = create<EventStore>((set, get) => ({
           passDirection: PACK_PASS_DIRECTION[nextPackNum],
           timerStartedAt: null,
           timerPausedAt: null,
+          isPaused: true,
+        },
+        updatedAt: Date.now(),
+      },
+    });
+  },
+
+  setCurrentPack: (pack) => {
+    const { event } = get();
+    if (!event?.draftState) return;
+    
+    // Reset timer to default duration and auto-start when switching packs
+    set({
+      event: {
+        ...event,
+        draftState: {
+          ...event.draftState,
+          currentPack: pack,
+          passDirection: PACK_PASS_DIRECTION[pack],
+          // Reset timer and auto-start
+          timerStartedAt: Date.now(),
+          timerPausedAt: null,
+          timerDuration: DEFAULT_SETTINGS.draftPickSeconds,
+          isPaused: false,
+          // Unmark complete if going back to earlier pack
+          isComplete: false,
+        },
+        updatedAt: Date.now(),
+      },
+    });
+  },
+
+  markDraftComplete: () => {
+    const { event } = get();
+    if (!event?.draftState) return;
+    
+    set({
+      event: {
+        ...event,
+        draftState: {
+          ...event.draftState,
+          isComplete: true,
           isPaused: true,
         },
         updatedAt: Date.now(),
@@ -478,6 +544,17 @@ export const useEventStore = create<EventStore>((set, get) => ({
           draftState: {
             ...event.draftState,
             timerDuration: Math.max(10, event.draftState.timerDuration + seconds),
+          },
+          updatedAt: Date.now(),
+        },
+      });
+    } else if (event.currentPhase === 'deckbuilding' && event.deckbuildingState) {
+      set({
+        event: {
+          ...event,
+          deckbuildingState: {
+            ...event.deckbuildingState,
+            timerDuration: Math.max(60, event.deckbuildingState.timerDuration + seconds),
           },
           updatedAt: Date.now(),
         },

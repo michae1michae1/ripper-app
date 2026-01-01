@@ -1,5 +1,5 @@
-import { ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from 'lucide-react';
-import { Avatar, Badge } from '@/components/ui';
+import { ArrowRight, ArrowLeft, CornerRightDown, CornerLeftUp, CornerLeftDown, CornerRightUp } from 'lucide-react';
+import { Avatar, Badge, EditablePlayerName } from '@/components/ui';
 import type { Player } from '@/types/event';
 
 interface PodSeatingProps {
@@ -7,14 +7,84 @@ interface PodSeatingProps {
   passDirection: 'left' | 'right';
 }
 
+type ArrowType = 'right' | 'left' | 'corner-down-right' | 'corner-down-left' | 'corner-up-right' | 'corner-up-left' | null;
+
+// Helper to get visual position (row, col) for a given seat number
+const getVisualPosition = (
+  seatNumber: number,
+  topRowCount: number,
+  totalPlayers: number
+): { row: number; col: number } => {
+  if (seatNumber <= topRowCount) {
+    // Top row: seats 1, 2, 3, 4 -> cols 0, 1, 2, 3
+    return { row: 0, col: seatNumber - 1 };
+  } else {
+    // Bottom row: displayed in reverse order (e.g., 8, 7, 6, 5)
+    // Seat 5 (first in bottom half) should be at rightmost position
+    // Seat 8 (last in bottom half) should be at leftmost position
+    const bottomRowCount = totalPlayers - topRowCount;
+    const positionInBottomRow = seatNumber - topRowCount; // 1-indexed position in bottom half
+    // Reverse: position 1 goes to col (bottomRowCount-1), position n goes to col 0
+    const col = bottomRowCount - positionInBottomRow;
+    return { row: 1, col };
+  }
+};
+
+// Helper to determine arrow type based on pass direction and seat positions
+// Arrows are always on left or right edges, using corner arrows for row transitions
+const getArrowType = (
+  seatNumber: number,
+  passDirection: 'left' | 'right',
+  totalPlayers: number,
+  topRowCount: number
+): ArrowType => {
+  // Calculate next seat based on pass direction
+  // "Left" = clockwise in U-shape = seat increases (1->2->3->...->8->1)
+  // "Right" = counter-clockwise = seat decreases (1->8->7->...->2->1)
+  const nextSeat = passDirection === 'left'
+    ? (seatNumber % totalPlayers) + 1
+    : seatNumber === 1 ? totalPlayers : seatNumber - 1;
+
+  // Get visual positions for both seats
+  const fromPos = getVisualPosition(seatNumber, topRowCount, totalPlayers);
+  const toPos = getVisualPosition(nextSeat, topRowCount, totalPlayers);
+
+  // Determine arrow based on relative visual positions
+  if (fromPos.row === toPos.row) {
+    // Same row - simple horizontal arrow
+    return toPos.col > fromPos.col ? 'right' : 'left';
+  }
+  
+  // Different row - use corner arrows based on pass direction
+  // Pass direction determines which edge the wrap-around arrows appear on:
+  // - Passing LEFT (clockwise): right edge going down, left edge going up
+  // - Passing RIGHT (counter-clockwise): left edge going down, right edge going up
+  if (fromPos.row < toPos.row) {
+    // Going from top row to bottom row
+    return passDirection === 'left' ? 'corner-down-right' : 'corner-down-left';
+  } else {
+    // Going from bottom row to top row
+    return passDirection === 'left' ? 'corner-up-left' : 'corner-up-right';
+  }
+};
+
 export const PodSeating = ({ players, passDirection }: PodSeatingProps) => {
   const totalPlayers = players.length;
-  const topRow = players.slice(0, Math.ceil(totalPlayers / 2));
-  const bottomRow = players.slice(Math.ceil(totalPlayers / 2)).reverse();
   
+  // Split players into two rows
+  // Top row: first half (left to right) - seats 1, 2, 3, 4
+  // Bottom row: second half (reversed order) - seats 8, 7, 6, 5 displayed left to right
+  const topRowCount = Math.ceil(totalPlayers / 2);
+  const bottomRowCount = Math.floor(totalPlayers / 2);
+  
+  const topRowPlayers = players.slice(0, topRowCount);
+  // Bottom row players reversed for U-shape seating
+  const bottomRowPlayers = players.slice(topRowCount).reverse();
+
   return (
-    <div className="bg-obsidian border border-storm rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-6">
+      {/* Header - Pod Seating, Pass Direction, and Active Players all on same line */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-slate rounded grid grid-cols-2 gap-0.5 p-0.5">
             <div className="bg-mist rounded-sm" />
@@ -24,96 +94,152 @@ export const PodSeating = ({ players, passDirection }: PodSeatingProps) => {
           </div>
           <span className="font-semibold text-snow">Pod Seating</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-success rounded-full animate-pulse-soft" />
+        
+        {/* Pass direction - centered */}
+        <div className="inline-flex items-center gap-2 bg-slate/50 rounded-lg px-4 py-2">
+          <span className="text-xs font-medium text-mist uppercase tracking-wide">Passing</span>
+          {passDirection === 'left' ? (
+            <ArrowLeft className="w-4 h-4 text-snow" />
+          ) : (
+            <ArrowRight className="w-4 h-4 text-snow" />
+          )}
+          <span className="text-sm font-medium text-snow capitalize">{passDirection}</span>
+        </div>
+        
+        {/* Active players count - styled badge with border */}
+        <div className="inline-flex items-center gap-2 border border-storm rounded-full px-3 py-1.5">
+          <div className="w-2 h-2 bg-success rounded-full" />
           <span className="text-sm text-mist">{totalPlayers} Active Players</span>
         </div>
       </div>
-      
-      <div className="space-y-4">
-        {/* Top Row */}
-        <div className="flex justify-center gap-3">
-          {topRow.map((player, i) => (
-            <PlayerSeat
-              key={player.id}
-              player={player}
-              seatNumber={i + 1}
-              showArrow={i < topRow.length - 1}
-              arrowDirection={passDirection === 'left' ? 'right' : 'left'}
-            />
-          ))}
-        </div>
-        
-        {/* Direction indicators on sides */}
-        <div className="flex justify-between px-4">
-          <div className="flex items-center text-arcane">
-            {passDirection === 'left' ? (
-              <ArrowUp className="w-5 h-5" />
-            ) : (
-              <ArrowDown className="w-5 h-5" />
-            )}
-          </div>
-          <div className="flex items-center text-arcane">
-            {passDirection === 'left' ? (
-              <ArrowDown className="w-5 h-5" />
-            ) : (
-              <ArrowUp className="w-5 h-5" />
-            )}
-          </div>
-        </div>
-        
-        {/* Bottom Row */}
-        <div className="flex justify-center gap-3">
-          {bottomRow.map((player, i) => {
-            const actualSeat = totalPlayers - i;
+
+      {/* Two-row flexbox layout with centering */}
+      <div className="space-y-8">
+        {/* Top Row - flexbox centered */}
+        <div className="flex flex-wrap justify-center gap-4">
+          {topRowPlayers.map((player, index) => {
+            const seatNumber = index + 1;
+            const arrowType = getArrowType(seatNumber, passDirection, totalPlayers, topRowCount);
+            
             return (
-              <PlayerSeat
+              <PlayerCard
                 key={player.id}
                 player={player}
-                seatNumber={actualSeat}
-                showArrow={i < bottomRow.length - 1}
-                arrowDirection={passDirection === 'left' ? 'left' : 'right'}
+                seatNumber={seatNumber}
+                arrowType={arrowType}
               />
             );
           })}
         </div>
+
+        {/* Bottom Row - flexbox centered (reversed order for U-shape) */}
+        {bottomRowCount > 0 && (
+          <div className="flex flex-wrap justify-center gap-4">
+            {bottomRowPlayers.map((player, index) => {
+              // Calculate actual seat number (bottom row is reversed visually)
+              // bottomRowPlayers is already reversed, so first item is the last seat
+              const actualIndex = totalPlayers - bottomRowCount + (bottomRowCount - 1 - index);
+              const seatNumber = actualIndex + 1;
+              const arrowType = getArrowType(seatNumber, passDirection, totalPlayers, topRowCount);
+              
+              return (
+                <PlayerCard
+                  key={player.id}
+                  player={player}
+                  seatNumber={seatNumber}
+                  arrowType={arrowType}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-interface PlayerSeatProps {
+interface PlayerCardProps {
   player: Player;
   seatNumber: number;
-  showArrow: boolean;
-  arrowDirection: 'left' | 'right';
+  arrowType: ArrowType;
 }
 
-const PlayerSeat = ({ player, seatNumber, showArrow, arrowDirection }: PlayerSeatProps) => {
+const ArrowBadge = ({ children, position }: { children: React.ReactNode; position: 'left' | 'right' }) => {
+  const positionClass = position === 'right' 
+    ? '-right-4 top-1/2 -translate-y-1/2' 
+    : '-left-4 top-1/2 -translate-y-1/2';
+  
   return (
-    <div className="flex items-center gap-2">
-      <div className="bg-slate border border-storm rounded-xl p-3 min-w-[140px]">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-mist font-mono">SEAT {String(seatNumber).padStart(2, '0')}</span>
-          <Badge variant="success" className="text-[10px]">PICKING</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Avatar name={player.name} size="sm" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-snow truncate">{player.name}</p>
-          </div>
+    <div className={`absolute ${positionClass} w-8 h-8 bg-obsidian border border-storm text-snow rounded-full flex items-center justify-center shadow-lg z-20 hidden lg:flex`}>
+      {children}
+    </div>
+  );
+};
+
+const PlayerCard = ({ 
+  player, 
+  seatNumber, 
+  arrowType,
+}: PlayerCardProps) => {
+  return (
+    <div className="group relative bg-slate border border-storm rounded-2xl p-4 hover:border-arcane/50 transition-all duration-300 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.75rem)]">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-mist font-mono">SEAT {String(seatNumber).padStart(2, '0')}</span>
+        <Badge variant="success" className="text-[10px]">PICKING</Badge>
+      </div>
+      <div className="flex items-center gap-3">
+        <Avatar name={player.name} size="md" />
+        <div className="min-w-0 flex-1">
+          <EditablePlayerName
+            playerId={player.id}
+            name={player.name}
+            className="font-semibold text-snow"
+            size="sm"
+          />
         </div>
       </div>
-      {showArrow && (
-        <div className="text-arcane">
-          {arrowDirection === 'right' ? (
-            <ArrowRight className="w-4 h-4" />
-          ) : (
-            <ArrowLeft className="w-4 h-4" />
-          )}
-        </div>
+      
+      {/* Right arrow */}
+      {arrowType === 'right' && (
+        <ArrowBadge position="right">
+          <ArrowRight className="w-4 h-4" />
+        </ArrowBadge>
+      )}
+      
+      {/* Left arrow */}
+      {arrowType === 'left' && (
+        <ArrowBadge position="left">
+          <ArrowLeft className="w-4 h-4" />
+        </ArrowBadge>
+      )}
+      
+      {/* Corner down-right (top row to bottom row, target on right) */}
+      {arrowType === 'corner-down-right' && (
+        <ArrowBadge position="right">
+          <CornerRightDown className="w-4 h-4" />
+        </ArrowBadge>
+      )}
+      
+      {/* Corner down-left (top row to bottom row, target on left) */}
+      {arrowType === 'corner-down-left' && (
+        <ArrowBadge position="left">
+          <CornerLeftDown className="w-4 h-4" />
+        </ArrowBadge>
+      )}
+      
+      {/* Corner up-left (bottom row to top row, target on left) */}
+      {arrowType === 'corner-up-left' && (
+        <ArrowBadge position="left">
+          <CornerLeftUp className="w-4 h-4" />
+        </ArrowBadge>
+      )}
+      
+      {/* Corner up-right (bottom row to top row, target on right) */}
+      {arrowType === 'corner-up-right' && (
+        <ArrowBadge position="right">
+          <CornerRightUp className="w-4 h-4" />
+        </ArrowBadge>
       )}
     </div>
   );
 };
-

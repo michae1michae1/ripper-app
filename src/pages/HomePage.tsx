@@ -100,15 +100,10 @@ export const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col">
-      {/* Header */}
+      {/* Header - minimal, content speaks for itself */}
       <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-arcane rounded-xl flex items-center justify-center font-bold text-white">
-              RL
-            </div>
-            <span className="text-xl font-semibold text-snow">Ripper Limit</span>
-          </div>
+        <div className="max-w-5xl mx-auto px-4 py-3">
+          {/* Empty header - branding is in the hero section */}
         </div>
       </header>
 

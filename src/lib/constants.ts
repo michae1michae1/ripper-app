@@ -1,6 +1,6 @@
 export const DEFAULT_SETTINGS = {
   roundTimerMinutes: 50,
-  draftPickSeconds: 40,
+  draftPickSeconds: 600, // 10 minutes per pack
   deckbuildingMinutes: 30,
   totalRounds: 3,
 } as const;

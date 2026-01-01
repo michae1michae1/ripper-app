@@ -23,6 +23,7 @@ interface EventStore {
   clearEvent: () => void;
   resetEvent: () => void;
   updateEventCode: (newCode: string) => void;
+  setEventSet: (code: string | null, name: string | null) => void;
   
   // Player management
   addPlayer: (name: string) => void;
@@ -91,6 +92,8 @@ export const useEventStore = create<EventStore>((set, get) => ({
       updatedAt: Date.now(),
       type,
       name: type === 'draft' ? 'Booster Draft' : 'Sealed Deck',
+      setCode: null,
+      setName: null,
       players: [{
         id: createPlayerId(),
         name: hostName,
@@ -153,6 +156,20 @@ export const useEventStore = create<EventStore>((set, get) => ({
       event: {
         ...event,
         eventCode: newCode.toUpperCase(),
+        updatedAt: Date.now(),
+      },
+    });
+  },
+
+  setEventSet: (code, name) => {
+    const { event } = get();
+    if (!event) return;
+    
+    set({
+      event: {
+        ...event,
+        setCode: code,
+        setName: name,
         updatedAt: Date.now(),
       },
     });
@@ -586,6 +603,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
           deckbuildingState: {
             timerStartedAt: null,
             timerPausedAt: null,
+            timerDuration: event.settings.deckbuildingMinutes * 60,
             isPaused: true,
           },
           updatedAt: Date.now(),

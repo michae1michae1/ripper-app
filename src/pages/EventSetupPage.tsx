@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, Pencil, Check, X } from 'lucide-react';
 import { Button, PasswordKeypad, isHostAuthenticated } from '@/components/ui';
-import { EventTypeSelector, PlayerList } from '@/components/event';
+import { EventTypeSelector, SetSelector, PlayerList } from '@/components/event';
 import { useEventStore } from '@/lib/store';
 import { createEventSession, getEventSession, updateEventSession, checkCodeAvailable } from '@/lib/api';
 import { parseCompositeId, createCompositeId } from '@/lib/generateId';
@@ -39,6 +39,7 @@ export const EventSetupPage = () => {
     startEvent,
     resetEvent,
     updateEventCode,
+    setEventSet,
     setLoading,
     setError,
     isLoading,
@@ -397,6 +398,14 @@ export const EventSetupPage = () => {
                 useEventStore.setState((state) => ({
                   event: state.event ? { ...state.event, type } : null,
                 }));
+                await updateEventSession(event.id, useEventStore.getState().event!);
+              }}
+            />
+
+            <SetSelector
+              value={{ code: event.setCode, name: event.setName }}
+              onChange={async (code, name) => {
+                setEventSet(code, name);
                 await updateEventSession(event.id, useEventStore.getState().event!);
               }}
             />

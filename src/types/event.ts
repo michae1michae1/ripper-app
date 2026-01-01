@@ -76,6 +76,8 @@ export interface EventSession {
   updatedAt: number;
   type: EventType;
   name: string;
+  setCode: string | null;  // MTG set code (e.g., "TLA", "DSK")
+  setName: string | null;  // MTG set name (e.g., "Avatar: The Last Airbender")
   players: Player[];
   currentPhase: EventPhase;
   currentRound: number;

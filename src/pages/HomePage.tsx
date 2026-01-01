@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, ArrowRight, Sparkles, Users } from 'lucide-react';
+import { Lock, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { getEventByCode, getEventSession } from '@/lib/api';
 import { parseCompositeId } from '@/lib/generateId';
@@ -110,12 +110,7 @@ export const HomePage = () => {
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
         <div className="text-center max-w-2xl">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-6 h-6 text-arcane" />
-            <span className="text-sm text-arcane font-medium uppercase tracking-wider">
-              MTG Event Manager
-            </span>
-          </div>
+
           
           <h1 className="text-5xl md:text-6xl font-bold text-snow mb-6 leading-tight">
             Run your{' '}
@@ -123,9 +118,9 @@ export const HomePage = () => {
             with ease
           </h1>
           
-          <p className="text-lg text-mist mb-10 max-w-lg mx-auto">
+          <p className="text-lg text-mist mb-10 max-w-xl mx-auto">
             Manage booster drafts and sealed events from setup to final standings. 
-            Track picks, run timers, and calculate Swiss pairings automatically.
+            Track picks, run timers, and setup match ready for pairings automatically.
           </p>
           
           {/* Two Options */}

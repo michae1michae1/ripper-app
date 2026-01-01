@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, BarChart3, Clock } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Sun, BarChart3, Clock, Home } from 'lucide-react';
+import { Button } from '@/components/ui';
 import { MatchCard, StandingsModal } from '@/components/rounds';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
@@ -140,44 +140,75 @@ export const MatchRoundsPage = () => {
   const isLastRound = roundNumber >= event.settings.totalRounds;
   const previousRound = roundNumber > 1 ? roundNumber - 1 : null;
 
+  // Status for navbar
+  const getStatusColor = () => {
+    if (allResultsEntered) return 'bg-success';
+    if (isRunning) return 'bg-cyan-400';
+    return 'bg-warning';
+  };
+
+  const getStatusText = () => {
+    if (allResultsEntered) return 'Ready to Proceed';
+    if (waitingCount > 0) return `Waiting for ${waitingCount} Result${waitingCount > 1 ? 's' : ''}`;
+    return 'In Progress';
+  };
+
   return (
     <div className="min-h-screen bg-midnight">
       {/* Header */}
       <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => previousRound 
-              ? navigate(`/event/${compositeId}/round/${previousRound}`)
-              : navigate(`/event/${compositeId}/deckbuilding`)
-            }
-            className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">
-              {previousRound ? `Round ${previousRound} Matches` : 'Deckbuilding'}
-            </span>
-          </button>
-          
-          <span className="text-sm text-mist uppercase tracking-wider">
-            Round {roundNumber} Matches
-          </span>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => isLastRound 
-                ? navigate(`/event/${compositeId}/results`)
-                : navigate(`/event/${compositeId}/round/${roundNumber + 1}`)
-              }
-              className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
-            >
-              <span className="text-sm">
-                {isLastRound ? 'Final Results' : `Round ${roundNumber + 1} Matches`}
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between relative">
+            {/* Left: Previous + Home */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => previousRound 
+                  ? navigate(`/event/${compositeId}/round/${previousRound}`)
+                  : navigate(`/event/${compositeId}/deckbuilding`)
+                }
+                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">
+                  {previousRound ? `Round ${previousRound}` : 'Deckbuilding'}
+                </span>
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                title="Go to Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Center: Status badge */}
+            <div className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full">
+              <span className={`w-2 h-2 rounded-full ${getStatusColor()} ${!allResultsEntered && 'animate-pulse'}`} />
+              <span className={`text-sm uppercase tracking-widest font-semibold ${allResultsEntered ? 'text-success' : 'text-warning'}`}>
+                {getStatusText()}
               </span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <Button variant="ghost" size="icon">
-              <Sun className="w-5 h-5" />
-            </Button>
+            </div>
+            
+            {/* Right: Theme + Next */}
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon">
+                <Sun className="w-5 h-5" />
+              </Button>
+              <button
+                onClick={() => isLastRound 
+                  ? navigate(`/event/${compositeId}/results`)
+                  : navigate(`/event/${compositeId}/round/${roundNumber + 1}`)
+                }
+                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+              >
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">Next</span>
+                <span className="font-medium text-snow hidden sm:inline">
+                  {isLastRound ? 'Results' : `Round ${roundNumber + 1}`}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -188,10 +219,9 @@ export const MatchRoundsPage = () => {
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold text-snow italic">
+              <h1 className="text-4xl font-bold text-snow">
                 Round {roundNumber} of {event.settings.totalRounds}
               </h1>
-              <Badge variant="warning">In Progress</Badge>
             </div>
             <p className="text-mist">
               Swiss Pairing System • {event.players.length} Players

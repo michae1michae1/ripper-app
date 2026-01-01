@@ -21,13 +21,20 @@ export const MatchCard = ({
   const result = match.result;
   const isBye = playerB === null;
   
+  const currentA = result?.playerAWins ?? 0;
+  const currentB = result?.playerBWins ?? 0;
+  const totalGames = currentA + currentB;
+  
   const handleScoreChange = (player: 'A' | 'B', delta: number) => {
-    const currentA = result?.playerAWins ?? 0;
-    const currentB = result?.playerBWins ?? 0;
+    const newA = player === 'A' ? Math.max(0, Math.min(2, currentA + delta)) : currentA;
+    const newB = player === 'B' ? Math.max(0, Math.min(2, currentB + delta)) : currentB;
+    
+    // Don't allow total games to exceed 3
+    if (newA + newB > 3) return;
     
     const newResult: MatchResult = {
-      playerAWins: player === 'A' ? Math.max(0, Math.min(2, currentA + delta)) : currentA,
-      playerBWins: player === 'B' ? Math.max(0, Math.min(2, currentB + delta)) : currentB,
+      playerAWins: newA,
+      playerBWins: newB,
       isDraw: false,
     };
     
@@ -35,11 +42,13 @@ export const MatchCard = ({
   };
 
   const handleDraw = () => {
-    onUpdateResult({
-      playerAWins: 0,
-      playerBWins: 0,
-      isDraw: true,
-    });
+    if (result?.isDraw) {
+      // Deselect draw - clear result
+      onUpdateResult({ playerAWins: 0, playerBWins: 0, isDraw: false });
+    } else {
+      // Select draw - set 1-1
+      onUpdateResult({ playerAWins: 1, playerBWins: 1, isDraw: true });
+    }
   };
 
   // Determine winner highlighting
@@ -81,7 +90,7 @@ export const MatchCard = ({
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('A', -1)}
-              disabled={isBye || (result?.playerAWins ?? 0) === 0}
+              disabled={isBye || currentA === 0}
               className="w-7 h-7"
             >
               <Minus className="w-3 h-3" />
@@ -90,13 +99,13 @@ export const MatchCard = ({
               'w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold',
               playerAWins ? 'bg-success/20 text-success' : 'bg-slate text-snow'
             )}>
-              {result?.playerAWins ?? 0}
+              {currentA}
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('A', 1)}
-              disabled={isBye || (result?.playerAWins ?? 0) === 2}
+              disabled={isBye || currentA === 2 || totalGames >= 3}
               className="w-7 h-7"
             >
               <Plus className="w-3 h-3" />
@@ -120,7 +129,7 @@ export const MatchCard = ({
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('B', -1)}
-              disabled={isBye || (result?.playerBWins ?? 0) === 0}
+              disabled={isBye || currentB === 0}
               className="w-7 h-7"
             >
               <Minus className="w-3 h-3" />
@@ -129,13 +138,13 @@ export const MatchCard = ({
               'w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold',
               playerBWins ? 'bg-success/20 text-success' : 'bg-slate text-snow'
             )}>
-              {isBye ? '-' : (result?.playerBWins ?? 0)}
+              {isBye ? '-' : currentB}
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('B', 1)}
-              disabled={isBye || (result?.playerBWins ?? 0) === 2}
+              disabled={isBye || currentB === 2 || totalGames >= 3}
               className="w-7 h-7"
             >
               <Plus className="w-3 h-3" />

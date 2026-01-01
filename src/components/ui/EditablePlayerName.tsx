@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useEventStore } from '@/lib/store';

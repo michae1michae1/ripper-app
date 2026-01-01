@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Share2, Download, Trophy, Sun } from 'lucide-react';
+import { ArrowLeft, Trophy, Sun, Home } from 'lucide-react';
 import { Button, Badge, Avatar, EditablePlayerName } from '@/components/ui';
 import { useEventStore } from '@/lib/store';
 import { calculateStandings } from '@/lib/swiss';
@@ -13,7 +13,6 @@ import type { ManaColor } from '@/types/event';
 export const FinalScoreboardPage = () => {
   const navigate = useNavigate();
   const { eventId: rawEventId } = useParams<{ eventId: string }>();
-  const [copied, setCopied] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -42,42 +41,6 @@ export const FinalScoreboardPage = () => {
       });
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
-
-  const handleShare = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleExport = () => {
-    if (!event) return;
-    
-    const standings = calculateStandings(event.players, event.rounds);
-    
-    // Generate CSV
-    const headers = ['Rank', 'Player', 'Points', 'Record', 'OMW%', 'GW%'];
-    const rows = standings.map((s, i) => {
-      const player = event.players.find(p => p.id === s.playerId);
-      return [
-        i + 1,
-        player?.name || 'Unknown',
-        s.points,
-        `${s.wins}-${s.losses}-${s.draws}`,
-        `${s.opponentMatchWinPercentage.toFixed(1)}%`,
-        `${s.gameWinPercentage.toFixed(1)}%`,
-      ].join(',');
-    });
-    
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${event.name.replace(/\s+/g, '_')}_results.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const toggleDeckColor = (playerId: string, color: ManaColor) => {
     const player = event?.players.find(p => p.id === playerId);
@@ -109,26 +72,51 @@ export const FinalScoreboardPage = () => {
   const lastRound = event.settings.totalRounds;
   const compositeId = createCompositeId(event.eventCode, event.id);
 
+  // Get set name display - will use setName from event once we add that field
+  const getSetDisplay = () => {
+    if (event.setName && event.setCode) {
+      return `${event.setName} (${event.setCode})`;
+    }
+    return event.type === 'draft' ? 'Booster Draft' : 'Sealed Deck';
+  };
+
   return (
     <div className="min-h-screen bg-midnight">
       {/* Header */}
       <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => navigate(`/event/${compositeId}/round/${lastRound}`)}
-            className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Round {lastRound} Matches</span>
-          </button>
-          
-          <span className="text-sm text-mist uppercase tracking-wider font-semibold">
-            Final Scoreboard
-          </span>
-          
-          <Button variant="ghost" size="icon">
-            <Sun className="w-5 h-5" />
-          </Button>
+        <div className="max-w-5xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between relative">
+            {/* Left: Previous + Home */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate(`/event/${compositeId}/round/${lastRound}`)}
+                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-xs uppercase tracking-wide hidden sm:inline">Round {lastRound}</span>
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                title="Go to Home"
+              >
+                <Home className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Center: Status badge */}
+            <div className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-success" />
+              <span className="text-sm uppercase tracking-widest font-semibold text-success">
+                Completed
+              </span>
+            </div>
+            
+            {/* Right: Theme */}
+            <Button variant="ghost" size="icon">
+              <Sun className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -136,34 +124,20 @@ export const FinalScoreboardPage = () => {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Event Info */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Badge variant="success">COMPLETED</Badge>
-            <span className="text-sm text-mist">{completedDate}</span>
-          </div>
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-4xl font-bold mb-3">
             <span className="text-snow">{event.name}: </span>
             <span className="text-arcane italic">
-              {event.type === 'draft' ? 'Booster Draft' : 'Sealed Deck'}
+              {getSetDisplay()}
             </span>
           </h1>
-          <div className="flex items-center gap-4 mt-3 text-sm text-mist">
+          <div className="flex items-center gap-4 text-sm text-mist">
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 bg-slate rounded flex items-center justify-center text-xs">📦</span>
               {event.type === 'draft' ? 'Booster Draft' : 'Sealed Deck'}
             </span>
             <span>👥 {event.players.length} Players</span>
             <span>🏆 {event.settings.totalRounds} Rounds</span>
-          </div>
-          
-          <div className="flex items-center gap-3 mt-4">
-            <Button variant="secondary" onClick={handleShare}>
-              <Share2 className="w-4 h-4" />
-              {copied ? 'Copied!' : 'Share'}
-            </Button>
-            <Button variant="primary" onClick={handleExport}>
-              <Download className="w-4 h-4" />
-              Export Results
-            </Button>
+            <span>📅 {completedDate}</span>
           </div>
         </div>
 

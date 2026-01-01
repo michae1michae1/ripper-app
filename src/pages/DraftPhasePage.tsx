@@ -155,8 +155,12 @@ export const DraftPhasePage = () => {
 
   if (isLoading || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
+      <div 
+        data-page="DraftPhasePage"
+        data-state="loading"
+        className="draft-page draft-page--loading min-h-screen flex items-center justify-center"
+      >
+        <div className="draft-page__loader animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -182,16 +186,23 @@ export const DraftPhasePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-midnight">
+    <div 
+      data-page="DraftPhasePage"
+      data-event-id={event.id}
+      data-pack={draftState.currentPack}
+      data-draft-started={draftStarted || undefined}
+      data-draft-complete={isDraftComplete || undefined}
+      className="draft-page min-h-screen bg-midnight"
+    >
       {/* Header */}
-      <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between relative">
+      <header className="draft-page__header border-b border-storm bg-obsidian/50">
+        <div className="draft-page__header-container max-w-6xl mx-auto px-4 py-3">
+          <div className="draft-page__header-row flex items-center justify-between relative">
             {/* Left: Previous + Home */}
-            <div className="flex items-center gap-4">
+            <div className="draft-page__nav-left flex items-center gap-4">
               <button
                 onClick={handleGoToAdmin}
-                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                className="draft-page__admin-link flex items-center gap-2 text-mist hover:text-snow transition-colors"
                 title="Admin access required"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -200,7 +211,7 @@ export const DraftPhasePage = () => {
               </button>
               <button
                 onClick={handleGoHome}
-                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                className="draft-page__home-btn p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
                 title="Go to Home"
               >
                 <Home className="w-5 h-5" />
@@ -210,20 +221,22 @@ export const DraftPhasePage = () => {
             {/* Center: Status badge - clickable to start draft */}
             <button
               onClick={!draftStarted ? handleStartDraft : undefined}
+              data-status={isDraftComplete ? 'complete' : draftStarted ? (isRunning ? 'running' : 'paused') : 'pending'}
               className={cn(
+                "draft-page__status-badge",
                 "flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full transition-all",
                 !draftStarted && "bg-warning/20 hover:bg-warning/30 cursor-pointer",
                 draftStarted && "cursor-default"
               )}
             >
               <span className={cn(
-                "w-2 h-2 rounded-full",
+                "draft-page__status-indicator w-2 h-2 rounded-full",
                 getStatusColor(),
                 !draftStarted && "animate-pulse",
                 isRunning && "animate-pulse"
               )} />
               <span className={cn(
-                "text-sm uppercase tracking-widest font-semibold",
+                "draft-page__status-text text-sm uppercase tracking-widest font-semibold",
                 !draftStarted && "text-warning",
                 isDraftComplete && "text-success",
                 draftStarted && !isDraftComplete && isRunning && "text-cyan-400",
@@ -234,15 +247,15 @@ export const DraftPhasePage = () => {
             </button>
             
             {/* Right: Theme + Next Deckbuilding */}
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon">
+            <div className="draft-page__nav-right flex items-center gap-4">
+              <Button variant="ghost" size="icon" className="draft-page__theme-btn">
                 <Sun className="w-5 h-5" />
               </Button>
               <button
                 onClick={handleMoveToDeckbuilding}
                 disabled={!isDraftComplete}
                 className={cn(
-                  "flex items-center gap-2 text-sm transition-colors",
+                  "draft-page__next-link flex items-center gap-2 text-sm transition-colors",
                   isDraftComplete
                     ? "text-mist hover:text-snow" 
                     : "text-mist/40 cursor-not-allowed"
@@ -261,15 +274,15 @@ export const DraftPhasePage = () => {
       </header>
 
       {/* Share Link Bar */}
-      <div className="bg-slate/50 border-b border-storm">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-mist">Event Code:</span>
+      <div className="draft-page__share-bar bg-slate/50 border-b border-storm">
+        <div className="draft-page__share-bar-container max-w-6xl mx-auto px-4 py-3">
+          <div className="draft-page__share-bar-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="draft-page__event-code-section flex items-center gap-4">
+              <div className="draft-page__event-code flex items-center gap-2">
+                <span className="draft-page__event-code-label text-sm text-mist">Event Code:</span>
                 <button
                   onClick={handleCopyCode}
-                  className="flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
+                  className="draft-page__event-code-value flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
                 >
                   {event.eventCode}
                   {codeCopied ? (
@@ -280,15 +293,16 @@ export const DraftPhasePage = () => {
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-mist" />
-              <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+            <div className="draft-page__share-link flex items-center gap-2">
+              <LinkIcon className="draft-page__share-link-icon w-4 h-4 text-mist" />
+              <code className="draft-page__share-link-url text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
                 {window.location.origin}/event/{compositeId}/draft
               </code>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleCopyLink}
+                className="draft-page__copy-link-btn"
               >
                 {linkCopied ? (
                   <>
@@ -308,16 +322,20 @@ export const DraftPhasePage = () => {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <main className="draft-page__main max-w-6xl mx-auto px-4 py-8 space-y-8">
         {/* Timer Section - Modern clean design with drop shadow */}
-        <div className="bg-obsidian rounded-xl p-6 shadow-lg shadow-black/20">
+        <div 
+          data-section="timer-section"
+          className="draft-page__timer-section bg-obsidian rounded-xl p-6 shadow-lg shadow-black/20"
+        >
           {/* Pack Breadcrumb - Full Width */}
-          <div className="flex items-center mb-4">
+          <div className="draft-page__pack-nav flex items-center mb-4">
             {/* Timer Toggle - Left of Pack 1 */}
             <button
               onClick={handleToggleTimerEnabled}
+              data-enabled={timerEnabled || undefined}
               className={cn(
-                "p-2 rounded-lg transition-all mr-4",
+                "draft-page__timer-toggle p-2 rounded-lg transition-all mr-4",
                 timerEnabled 
                   ? "bg-arcane/20 text-arcane hover:bg-arcane/30" 
                   : "bg-slate text-mist/50 hover:text-mist"
@@ -331,7 +349,10 @@ export const DraftPhasePage = () => {
             <button
               onClick={() => handleSetPack(1)}
               disabled={!draftStarted}
+              data-pack="1"
+              data-active={draftState.currentPack === 1 || undefined}
               className={cn(
+                "draft-page__pack-btn draft-page__pack-btn--pack1",
                 "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
                 draftState.currentPack === 1 && draftStarted && "text-xl text-snow",
                 draftState.currentPack !== 1 && draftStarted && "text-sm text-mist hover:text-snow",
@@ -342,10 +363,11 @@ export const DraftPhasePage = () => {
             </button>
             
             {/* Connector line 1 - flex-1 to stretch */}
-            <div className="flex-1 mx-4">
+            <div className="draft-page__pack-connector flex-1 mx-4">
               <div
+                data-completed={draftState.currentPack > 1 || undefined}
                 className={cn(
-                  'h-0.5 rounded-full transition-colors',
+                  'draft-page__pack-connector-line h-0.5 rounded-full transition-colors',
                   draftState.currentPack > 1 ? 'bg-arcane' : 'bg-storm'
                 )}
               />
@@ -355,7 +377,10 @@ export const DraftPhasePage = () => {
             <button
               onClick={() => handleSetPack(2)}
               disabled={!draftStarted}
+              data-pack="2"
+              data-active={draftState.currentPack === 2 || undefined}
               className={cn(
+                "draft-page__pack-btn draft-page__pack-btn--pack2",
                 "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
                 draftState.currentPack === 2 && "text-xl text-snow",
                 draftState.currentPack !== 2 && draftStarted && "text-sm text-mist hover:text-snow",
@@ -366,10 +391,11 @@ export const DraftPhasePage = () => {
             </button>
             
             {/* Connector line 2 - flex-1 to stretch */}
-            <div className="flex-1 mx-4">
+            <div className="draft-page__pack-connector flex-1 mx-4">
               <div
+                data-completed={draftState.currentPack > 2 || undefined}
                 className={cn(
-                  'h-0.5 rounded-full transition-colors',
+                  'draft-page__pack-connector-line h-0.5 rounded-full transition-colors',
                   draftState.currentPack > 2 ? 'bg-arcane' : 'bg-storm'
                 )}
               />
@@ -379,7 +405,10 @@ export const DraftPhasePage = () => {
             <button
               onClick={() => handleSetPack(3)}
               disabled={!draftStarted}
+              data-pack="3"
+              data-active={draftState.currentPack === 3 || undefined}
               className={cn(
+                "draft-page__pack-btn draft-page__pack-btn--pack3",
                 "font-semibold transition-all whitespace-nowrap uppercase tracking-wide",
                 draftState.currentPack === 3 && "text-xl text-snow",
                 draftState.currentPack !== 3 && draftStarted && "text-sm text-mist hover:text-snow",
@@ -393,8 +422,9 @@ export const DraftPhasePage = () => {
             <button
               onClick={handleMarkDraftComplete}
               disabled={!draftStarted || !isOnPack3 || isDraftComplete}
+              data-complete={isDraftComplete || undefined}
               className={cn(
-                "p-2 rounded-full transition-all ml-4",
+                "draft-page__complete-btn p-2 rounded-full transition-all ml-4",
                 isDraftComplete && "bg-success/20 text-success",
                 !isDraftComplete && isOnPack3 && draftStarted && "bg-slate text-mist hover:text-snow hover:bg-slate/80",
                 (!isOnPack3 || !draftStarted) && !isDraftComplete && "bg-slate/50 text-mist/30 cursor-not-allowed"
@@ -407,14 +437,14 @@ export const DraftPhasePage = () => {
 
           {/* Timer Area - Only show when timer is enabled */}
           {timerEnabled && (
-            <div className="flex flex-col items-center">
-              <div className="flex items-center gap-6">
+            <div className="draft-page__timer-area flex flex-col items-center">
+              <div className="draft-page__timer-controls flex items-center gap-6">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => handleAdjust(-10)}
                   title="Remove 10 seconds"
-                  className="text-mist hover:text-snow w-12 h-12"
+                  className="draft-page__timer-decrease text-mist hover:text-snow w-12 h-12"
                   disabled={!draftStarted}
                 >
                   <Minus className="w-6 h-6" />
@@ -424,7 +454,7 @@ export const DraftPhasePage = () => {
                   onClick={handleTimerToggle}
                   disabled={!draftStarted}
                   className={cn(
-                    "relative group",
+                    "draft-page__timer-display-btn relative group",
                     draftStarted && "cursor-pointer"
                   )}
                 >
@@ -436,7 +466,7 @@ export const DraftPhasePage = () => {
                   />
                   {/* Play/Pause overlay - only show when draft started */}
                   {draftStarted && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
+                    <div className="draft-page__timer-overlay absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
                       {isRunning ? (
                         <Pause className="w-12 h-12 text-white" />
                       ) : (
@@ -451,7 +481,7 @@ export const DraftPhasePage = () => {
                   size="icon"
                   onClick={() => handleAdjust(10)}
                   title="Add 10 seconds"
-                  className="text-mist hover:text-snow w-12 h-12"
+                  className="draft-page__timer-increase text-mist hover:text-snow w-12 h-12"
                   disabled={!draftStarted}
                 >
                   <Plus className="w-6 h-6" />
@@ -468,17 +498,20 @@ export const DraftPhasePage = () => {
         />
 
         {/* Event Log - Clean design without container */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-mist uppercase tracking-wide">
+        <div 
+          data-section="event-log"
+          className="draft-page__event-log space-y-2"
+        >
+          <h3 className="draft-page__event-log-title text-xs font-semibold text-mist uppercase tracking-wide">
             Event Log
           </h3>
-          <div className="flex items-center gap-6 text-sm text-mist overflow-x-auto pb-2">
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-xs text-mist/60">
+          <div className="draft-page__event-log-entries flex items-center gap-6 text-sm text-mist overflow-x-auto pb-2">
+            <div className="draft-page__event-log-entry flex items-center gap-2 whitespace-nowrap">
+              <span className="draft-page__event-log-time text-xs text-mist/60">
                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-              <span className="w-2 h-2 bg-arcane rounded-full" />
-              <span>
+              <span className="draft-page__event-log-indicator w-2 h-2 bg-arcane rounded-full" />
+              <span className="draft-page__event-log-message">
                 {!draftStarted 
                   ? 'Waiting to start draft...' 
                   : isDraftComplete

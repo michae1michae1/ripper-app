@@ -82,41 +82,46 @@ export const PodSeating = ({ players, passDirection }: PodSeatingProps) => {
   const bottomRowPlayers = players.slice(topRowCount).reverse();
 
   return (
-    <div className="space-y-6">
+    <div 
+      data-component="PodSeating"
+      data-player-count={totalPlayers}
+      data-pass-direction={passDirection}
+      className="pod-seating space-y-6"
+    >
       {/* Header - Pod Seating, Pass Direction, and Active Players all on same line */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-slate rounded grid grid-cols-2 gap-0.5 p-0.5">
+      <div className="pod-seating__header flex items-center justify-between">
+        <div className="pod-seating__title-group flex items-center gap-2">
+          <div className="pod-seating__icon w-4 h-4 bg-slate rounded grid grid-cols-2 gap-0.5 p-0.5">
             <div className="bg-mist rounded-sm" />
             <div className="bg-mist rounded-sm" />
             <div className="bg-mist rounded-sm" />
             <div className="bg-mist rounded-sm" />
           </div>
-          <span className="font-semibold text-snow">Pod Seating</span>
+          <span className="pod-seating__title font-semibold text-snow">Pod Seating</span>
         </div>
         
         {/* Pass direction - centered */}
-        <div className="inline-flex items-center gap-2 bg-slate/50 rounded-lg px-4 py-2">
-          <span className="text-xs font-medium text-mist uppercase tracking-wide">Passing</span>
+        <div className="pod-seating__pass-direction inline-flex items-center gap-2 bg-slate/50 rounded-lg px-4 py-2">
+          <span className="pod-seating__pass-label text-xs font-medium text-mist uppercase tracking-wide">Passing</span>
           {passDirection === 'left' ? (
-            <ArrowLeft className="w-4 h-4 text-snow" />
+            <ArrowLeft className="pod-seating__pass-icon w-4 h-4 text-snow" />
           ) : (
-            <ArrowRight className="w-4 h-4 text-snow" />
+            <ArrowRight className="pod-seating__pass-icon w-4 h-4 text-snow" />
           )}
-          <span className="text-sm font-medium text-snow capitalize">{passDirection}</span>
+          <span className="pod-seating__pass-value text-sm font-medium text-snow capitalize">{passDirection}</span>
         </div>
         
         {/* Active players count - styled badge with border */}
-        <div className="inline-flex items-center gap-2 border border-storm rounded-full px-3 py-1.5">
-          <div className="w-2 h-2 bg-success rounded-full" />
-          <span className="text-sm text-mist">{totalPlayers} Active Players</span>
+        <div className="pod-seating__player-count inline-flex items-center gap-2 border border-storm rounded-full px-3 py-1.5">
+          <div className="pod-seating__active-indicator w-2 h-2 bg-success rounded-full" />
+          <span className="pod-seating__count-text text-sm text-mist">{totalPlayers} Active Players</span>
         </div>
       </div>
 
       {/* Two-row flexbox layout with centering */}
-      <div className="space-y-8">
+      <div className="pod-seating__grid space-y-8">
         {/* Top Row - flexbox centered */}
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="pod-seating__row pod-seating__row--top flex flex-wrap justify-center gap-4">
           {topRowPlayers.map((player, index) => {
             const seatNumber = index + 1;
             const arrowType = getArrowType(seatNumber, passDirection, totalPlayers, topRowCount);
@@ -134,7 +139,7 @@ export const PodSeating = ({ players, passDirection }: PodSeatingProps) => {
 
         {/* Bottom Row - flexbox centered (reversed order for U-shape) */}
         {bottomRowCount > 0 && (
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="pod-seating__row pod-seating__row--bottom flex flex-wrap justify-center gap-4">
             {bottomRowPlayers.map((player, index) => {
               // Calculate actual seat number (bottom row is reversed visually)
               // bottomRowPlayers is already reversed, so first item is the last seat
@@ -170,7 +175,11 @@ const ArrowBadge = ({ children, position }: { children: React.ReactNode; positio
     : '-left-4 top-1/2 -translate-y-1/2';
   
   return (
-    <div className={`absolute ${positionClass} w-8 h-8 bg-obsidian border border-storm text-snow rounded-full flex items-center justify-center shadow-lg z-20 hidden lg:flex`}>
+    <div 
+      data-component="ArrowBadge"
+      data-position={position}
+      className={`player-card__arrow-badge player-card__arrow-badge--${position} absolute ${positionClass} w-8 h-8 bg-obsidian border border-storm text-snow rounded-full flex items-center justify-center shadow-lg z-20 hidden lg:flex`}
+    >
       {children}
     </div>
   );
@@ -182,14 +191,20 @@ const PlayerCard = ({
   arrowType,
 }: PlayerCardProps) => {
   return (
-    <div className="group relative bg-slate border border-storm rounded-2xl p-4 hover:border-arcane/50 transition-all duration-300 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.75rem)]">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-mist font-mono">SEAT {String(seatNumber).padStart(2, '0')}</span>
-        <Badge variant="success" className="text-[10px]">PICKING</Badge>
+    <div 
+      data-component="PlayerCard"
+      data-player-id={player.id}
+      data-seat={seatNumber}
+      data-arrow-type={arrowType || undefined}
+      className="player-card group relative bg-slate border border-storm rounded-2xl p-4 hover:border-arcane/50 transition-all duration-300 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.75rem)]"
+    >
+      <div className="player-card__header flex items-center justify-between mb-3">
+        <span className="player-card__seat text-xs text-mist font-mono">SEAT {String(seatNumber).padStart(2, '0')}</span>
+        <Badge variant="success" className="player-card__status text-[10px]">PICKING</Badge>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="player-card__info flex items-center gap-3">
         <Avatar name={player.name} size="md" />
-        <div className="min-w-0 flex-1">
+        <div className="player-card__name-wrapper min-w-0 flex-1">
           <EditablePlayerName
             playerId={player.id}
             name={player.name}

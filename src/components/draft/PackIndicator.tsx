@@ -6,22 +6,31 @@ interface PackIndicatorProps {
 
 export const PackIndicator = ({ currentPack }: PackIndicatorProps) => {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+    <div 
+      data-component="PackIndicator"
+      data-current-pack={currentPack}
+      className="pack-indicator flex flex-col gap-3"
+    >
+      <div className="pack-indicator__packs flex items-center gap-2">
         {[1, 2, 3].map((pack) => (
-          <div key={pack} className="flex items-center gap-2">
+          <div key={pack} className="pack-indicator__pack-item flex items-center gap-2">
             <span
+              data-pack={pack}
+              data-active={currentPack === pack || undefined}
               className={cn(
+                'pack-indicator__pack-label',
+                currentPack === pack && 'pack-indicator__pack-label--active',
                 'text-sm font-medium',
                 currentPack === pack ? 'text-snow' : 'text-mist'
               )}
             >
-              {currentPack === pack ? `Pack ${pack}` : `Pack ${pack}`}
+              Pack {pack}
             </span>
             {pack < 3 && (
               <div
+                data-completed={pack < currentPack || undefined}
                 className={cn(
-                  'w-8 h-0.5 rounded-full',
+                  'pack-indicator__connector w-8 h-0.5 rounded-full',
                   pack < currentPack ? 'bg-arcane' : 'bg-storm'
                 )}
               />
@@ -29,13 +38,9 @@ export const PackIndicator = ({ currentPack }: PackIndicatorProps) => {
           </div>
         ))}
       </div>
-      <div
-        className={cn(
-          'w-full h-1 rounded-full bg-storm overflow-hidden'
-        )}
-      >
+      <div className="pack-indicator__progress-track w-full h-1 rounded-full bg-storm overflow-hidden">
         <div
-          className="h-full bg-arcane transition-all duration-300"
+          className="pack-indicator__progress-bar h-full bg-arcane transition-all duration-300"
           style={{ width: `${(currentPack / 3) * 100}%` }}
         />
       </div>

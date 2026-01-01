@@ -21,15 +21,21 @@ export const TimerDisplay = ({
 }: TimerDisplayProps) => {
   return (
     <div 
+      data-component="TimerDisplay"
+      data-size={size}
+      data-expired={isExpired || undefined}
       className={cn(
+        'timer-display',
+        `timer-display--${size}`,
+        isExpired && 'timer-display--expired',
         'font-mono font-bold tracking-tight',
         sizeStyles[size],
         isExpired ? 'text-danger animate-pulse' : 'timer-gradient'
       )}
     >
-      <span>{String(minutes).padStart(2, '0')}</span>
-      <span>:</span>
-      <span>{String(seconds).padStart(2, '0')}</span>
+      <span className="timer-display__minutes">{String(minutes).padStart(2, '0')}</span>
+      <span className="timer-display__separator">:</span>
+      <span className="timer-display__seconds">{String(seconds).padStart(2, '0')}</span>
     </div>
   );
 };

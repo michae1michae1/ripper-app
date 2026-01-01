@@ -47,14 +47,19 @@ export const Avatar = ({ name, size = 'md', className }: AvatarProps) => {
   
   return (
     <div
+      data-component="Avatar"
+      data-size={size}
+      data-name={name}
       className={cn(
+        'ui-avatar',
+        `ui-avatar--${size}`,
         'flex items-center justify-center rounded-full font-semibold text-white',
         sizeStyles[size],
         bgColor,
         className
       )}
     >
-      {initials}
+      <span className="ui-avatar__initials">{initials}</span>
     </div>
   );
 };

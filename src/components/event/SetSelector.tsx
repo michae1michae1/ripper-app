@@ -71,20 +71,26 @@ export const SetSelector = ({ value, onChange }: SetSelectorProps) => {
     : 'Select a Set (Optional)';
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-semibold text-snow uppercase tracking-wide">
-        <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-arcane" />
+    <div 
+      data-component="SetSelector"
+      data-set-code={value.code || undefined}
+      className="set-selector space-y-2"
+    >
+      <label className="set-selector__label block text-sm font-semibold text-snow uppercase tracking-wide">
+        <div className="set-selector__label-content flex items-center gap-2">
+          <Package className="set-selector__label-icon w-4 h-4 text-arcane" />
           Set / Expansion
         </div>
       </label>
       
-      <div className="set-selector relative">
+      <div className="set-selector__dropdown relative">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           disabled={isLoading}
+          data-open={isOpen || undefined}
           className={cn(
+            'set-selector__trigger',
             'w-full px-4 py-3 bg-slate border border-storm rounded-xl text-left',
             'flex items-center justify-between',
             'hover:border-arcane/50 transition-colors',
@@ -93,41 +99,43 @@ export const SetSelector = ({ value, onChange }: SetSelectorProps) => {
           )}
         >
           <span className={cn(
+            'set-selector__value',
             value.name ? 'text-snow' : 'text-mist'
           )}>
             {isLoading ? 'Loading sets...' : selectedDisplay}
           </span>
           {isLoading ? (
-            <Loader2 className="w-4 h-4 text-mist animate-spin" />
+            <Loader2 className="set-selector__loader w-4 h-4 text-mist animate-spin" />
           ) : (
             <ChevronDown className={cn(
-              'w-4 h-4 text-mist transition-transform',
+              'set-selector__chevron w-4 h-4 text-mist transition-transform',
               isOpen && 'rotate-180'
             )} />
           )}
         </button>
         
         {isOpen && !isLoading && (
-          <div className="absolute z-50 w-full mt-2 bg-obsidian border border-storm rounded-xl shadow-xl overflow-hidden">
+          <div className="set-selector__menu absolute z-50 w-full mt-2 bg-obsidian border border-storm rounded-xl shadow-xl overflow-hidden">
             {/* Search input */}
-            <div className="p-2 border-b border-storm">
+            <div className="set-selector__search-wrapper p-2 border-b border-storm">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search sets..."
-                className="w-full px-3 py-2 bg-slate border border-storm rounded-lg text-snow text-sm placeholder:text-mist focus:outline-none focus:border-arcane"
+                className="set-selector__search-input w-full px-3 py-2 bg-slate border border-storm rounded-lg text-snow text-sm placeholder:text-mist focus:outline-none focus:border-arcane"
                 autoFocus
               />
             </div>
             
             {/* Options */}
-            <div className="max-h-64 overflow-y-auto">
+            <div className="set-selector__options max-h-64 overflow-y-auto">
               {/* None option */}
               <button
                 type="button"
                 onClick={() => handleSelect(null)}
                 className={cn(
+                  'set-selector__option set-selector__option--none',
                   'w-full px-4 py-2.5 text-left text-sm hover:bg-slate transition-colors',
                   !value.code && 'bg-arcane/10 text-arcane'
                 )}
@@ -136,27 +144,29 @@ export const SetSelector = ({ value, onChange }: SetSelectorProps) => {
               </button>
               
               {error ? (
-                <div className="px-4 py-3 text-sm text-danger">{error}</div>
+                <div className="set-selector__error px-4 py-3 text-sm text-danger">{error}</div>
               ) : filteredSets.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-mist">No sets found</div>
+                <div className="set-selector__empty px-4 py-3 text-sm text-mist">No sets found</div>
               ) : (
                 filteredSets.map((set) => (
                   <button
                     key={set.code}
                     type="button"
+                    data-set-code={set.code}
                     onClick={() => handleSelect(set)}
                     className={cn(
+                      'set-selector__option',
                       'w-full px-4 py-2.5 text-left text-sm hover:bg-slate transition-colors flex items-center justify-between',
-                      value.code?.toLowerCase() === set.code.toLowerCase() && 'bg-arcane/10'
+                      value.code?.toLowerCase() === set.code.toLowerCase() && 'set-selector__option--selected bg-arcane/10'
                     )}
                   >
                     <span className={cn(
-                      'text-snow',
+                      'set-selector__option-name text-snow',
                       value.code?.toLowerCase() === set.code.toLowerCase() && 'text-arcane'
                     )}>
                       {set.name}
                     </span>
-                    <span className="text-xs text-mist font-mono">{set.code.toUpperCase()}</span>
+                    <span className="set-selector__option-code text-xs text-mist font-mono">{set.code.toUpperCase()}</span>
                   </button>
                 ))
               )}
@@ -165,7 +175,7 @@ export const SetSelector = ({ value, onChange }: SetSelectorProps) => {
         )}
       </div>
       
-      <p className="text-xs text-mist">
+      <p className="set-selector__hint text-xs text-mist">
         Choose the MTG set being drafted or played
       </p>
     </div>

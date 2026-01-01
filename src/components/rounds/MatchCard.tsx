@@ -26,8 +26,8 @@ export const MatchCard = ({
   const totalGames = currentA + currentB;
   
   const handleScoreChange = (player: 'A' | 'B', delta: number) => {
-    const newA = player === 'A' ? Math.max(0, Math.min(2, currentA + delta)) : currentA;
-    const newB = player === 'B' ? Math.max(0, Math.min(2, currentB + delta)) : currentB;
+    const newA = player === 'A' ? Math.max(0, Math.min(3, currentA + delta)) : currentA;
+    const newB = player === 'B' ? Math.max(0, Math.min(3, currentB + delta)) : currentB;
     
     // Don't allow total games to exceed 3
     if (newA + newB > 3) return;
@@ -56,48 +56,58 @@ export const MatchCard = ({
   const playerBWins = result && !result.isDraw && result.playerBWins > result.playerAWins;
 
   return (
-    <div className="bg-obsidian border border-storm p-4">
-      <div className="flex items-center justify-between">
+    <div 
+      data-component="MatchCard"
+      data-match-id={match.id}
+      data-table={tableNumber}
+      data-is-bye={isBye || undefined}
+      data-player-a-wins={playerAWins || undefined}
+      data-player-b-wins={playerBWins || undefined}
+      data-is-draw={result?.isDraw || undefined}
+      className="match-card bg-obsidian border border-storm p-4"
+    >
+      <div className="match-card__content flex items-center justify-between">
         {/* Table Number */}
-        <div className="w-8 text-center">
-          <span className="text-sm text-mist">{tableNumber}</span>
+        <div className="match-card__table w-8 text-center">
+          <span className="match-card__table-number text-sm text-mist">{tableNumber}</span>
         </div>
 
         {/* Player A */}
         <div className={cn(
-          'flex-1 text-left pl-4',
-          playerAWins && 'text-success'
+          'match-card__player-a flex-1 text-left pl-4',
+          playerAWins && 'match-card__player-a--winner text-success'
         )}>
           <EditablePlayerName
             playerId={playerA.id}
             name={playerA.name}
             className={cn(
-              'font-medium',
+              'match-card__player-name font-medium',
               playerAWins ? 'text-success' : 'text-snow'
             )}
             size="md"
           />
-          <p className="text-xs text-mist">
+          <p className="match-card__player-record text-xs text-mist">
             {getPlayerRecord(playerA)}
           </p>
         </div>
 
         {/* Score Controls */}
-        <div className="flex items-center gap-3">
+        <div className="match-card__score-controls flex items-center gap-3">
           {/* Player A Score */}
-          <div className="flex items-center gap-1">
+          <div className="match-card__score-group match-card__score-group--a flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('A', -1)}
               disabled={isBye || currentA === 0}
-              className="w-7 h-7"
+              className="match-card__score-decrease w-7 h-7"
             >
               <Minus className="w-3 h-3" />
             </Button>
             <div className={cn(
+              'match-card__score-display',
               'w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold',
-              playerAWins ? 'bg-success/20 text-success' : 'bg-slate text-snow'
+              playerAWins ? 'match-card__score-display--winner bg-success/20 text-success' : 'bg-slate text-snow'
             )}>
               {currentA}
             </div>
@@ -105,8 +115,8 @@ export const MatchCard = ({
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('A', 1)}
-              disabled={isBye || currentA === 2 || totalGames >= 3}
-              className="w-7 h-7"
+              disabled={isBye || currentA === 3 || totalGames >= 3}
+              className="match-card__score-increase w-7 h-7"
             >
               <Plus className="w-3 h-3" />
             </Button>
@@ -118,25 +128,26 @@ export const MatchCard = ({
             size="sm"
             onClick={handleDraw}
             disabled={isBye}
-            className="text-xs"
+            className="match-card__draw-btn text-xs"
           >
             DRAW
           </Button>
 
           {/* Player B Score */}
-          <div className="flex items-center gap-1">
+          <div className="match-card__score-group match-card__score-group--b flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('B', -1)}
               disabled={isBye || currentB === 0}
-              className="w-7 h-7"
+              className="match-card__score-decrease w-7 h-7"
             >
               <Minus className="w-3 h-3" />
             </Button>
             <div className={cn(
+              'match-card__score-display',
               'w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold',
-              playerBWins ? 'bg-success/20 text-success' : 'bg-slate text-snow'
+              playerBWins ? 'match-card__score-display--winner bg-success/20 text-success' : 'bg-slate text-snow'
             )}>
               {isBye ? '-' : currentB}
             </div>
@@ -144,8 +155,8 @@ export const MatchCard = ({
               variant="ghost"
               size="icon"
               onClick={() => handleScoreChange('B', 1)}
-              disabled={isBye || currentB === 2 || totalGames >= 3}
-              className="w-7 h-7"
+              disabled={isBye || currentB === 3 || totalGames >= 3}
+              className="match-card__score-increase w-7 h-7"
             >
               <Plus className="w-3 h-3" />
             </Button>
@@ -154,26 +165,26 @@ export const MatchCard = ({
 
         {/* Player B */}
         <div className={cn(
-          'flex-1 text-right pr-4',
-          playerBWins && 'text-success'
+          'match-card__player-b flex-1 text-right pr-4',
+          playerBWins && 'match-card__player-b--winner text-success'
         )}>
           {isBye ? (
-            <>
-              <Badge variant="success" className="mb-1">Auto Win (Bye)</Badge>
-              <p className="text-sm text-mist">NO OPPONENT</p>
-            </>
+            <div className="match-card__bye">
+              <Badge variant="success" className="match-card__bye-badge mb-1">Auto Win (Bye)</Badge>
+              <p className="match-card__bye-text text-sm text-mist">NO OPPONENT</p>
+            </div>
           ) : (
-            <div className="flex flex-col items-end">
+            <div className="match-card__player-info flex flex-col items-end">
               <EditablePlayerName
                 playerId={playerB.id}
                 name={playerB.name}
                 className={cn(
-                  'font-medium',
+                  'match-card__player-name font-medium',
                   playerBWins ? 'text-success' : 'text-snow'
                 )}
                 size="md"
               />
-              <p className="text-xs text-mist">
+              <p className="match-card__player-record text-xs text-mist">
                 {getPlayerRecord(playerB)}
               </p>
             </div>

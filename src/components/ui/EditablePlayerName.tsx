@@ -71,7 +71,11 @@ export const EditablePlayerName = ({
 
   if (isEditing) {
     return (
-      <div className="flex items-center gap-1">
+      <div 
+        data-component="EditablePlayerName"
+        data-editing="true"
+        className="editable-player-name editable-player-name--editing flex items-center gap-1"
+      >
         <input
           ref={inputRef}
           type="text"
@@ -80,6 +84,7 @@ export const EditablePlayerName = ({
           onKeyDown={handleKeyDown}
           onBlur={handleSave}
           className={cn(
+            'editable-player-name__input',
             'bg-slate border border-arcane rounded text-snow outline-none focus:ring-1 focus:ring-arcane',
             inputSizeClasses[size],
             className
@@ -88,14 +93,14 @@ export const EditablePlayerName = ({
         />
         <button
           onClick={handleSave}
-          className="p-1 text-success hover:bg-success/20 rounded transition-colors"
+          className="editable-player-name__save-btn p-1 text-success hover:bg-success/20 rounded transition-colors"
           title="Save"
         >
           <Check className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={handleCancel}
-          className="p-1 text-danger hover:bg-danger/20 rounded transition-colors"
+          className="editable-player-name__cancel-btn p-1 text-danger hover:bg-danger/20 rounded transition-colors"
           title="Cancel"
         >
           <X className="w-3.5 h-3.5" />
@@ -106,16 +111,19 @@ export const EditablePlayerName = ({
 
   return (
     <button
+      data-component="EditablePlayerName"
+      data-player-id={playerId}
       onClick={() => setIsEditing(true)}
       className={cn(
+        'editable-player-name',
         'group inline-flex items-center gap-1.5 hover:text-arcane transition-colors text-left',
         sizeClasses[size],
         className
       )}
       title="Click to edit name"
     >
-      <span className="truncate">{name}</span>
-      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      <span className="editable-player-name__text truncate">{name}</span>
+      <Pencil className="editable-player-name__edit-icon w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </button>
   );
 };

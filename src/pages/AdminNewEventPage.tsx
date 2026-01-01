@@ -14,11 +14,13 @@ export const AdminNewEventPage = () => {
   };
 
   return (
-    <PasswordKeypad
-      onSuccess={handlePasswordSuccess}
-      onGoBack={handleGoBack}
-      showGoBack={true}
-    />
+    <div data-page="AdminNewEventPage" className="admin-new-event-page">
+      <PasswordKeypad
+        onSuccess={handlePasswordSuccess}
+        onGoBack={handleGoBack}
+        showGoBack={true}
+      />
+    </div>
   );
 };
 

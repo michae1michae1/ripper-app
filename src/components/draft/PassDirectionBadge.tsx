@@ -6,14 +6,18 @@ interface PassDirectionBadgeProps {
 
 export const PassDirectionBadge = ({ direction }: PassDirectionBadgeProps) => {
   return (
-    <div className="inline-flex items-center gap-2 bg-slate rounded-full px-3 py-1.5">
-      <span className="text-xs font-medium text-mist uppercase tracking-wide">Passing</span>
+    <div 
+      data-component="PassDirectionBadge"
+      data-direction={direction}
+      className="pass-direction-badge inline-flex items-center gap-2 bg-slate rounded-full px-3 py-1.5"
+    >
+      <span className="pass-direction-badge__label text-xs font-medium text-mist uppercase tracking-wide">Passing</span>
       {direction === 'left' ? (
-        <ArrowLeft className="w-4 h-4 text-snow" />
+        <ArrowLeft className="pass-direction-badge__icon w-4 h-4 text-snow" />
       ) : (
-        <ArrowRight className="w-4 h-4 text-snow" />
+        <ArrowRight className="pass-direction-badge__icon w-4 h-4 text-snow" />
       )}
-      <span className="text-sm font-medium text-snow capitalize">{direction}</span>
+      <span className="pass-direction-badge__direction text-sm font-medium text-snow capitalize">{direction}</span>
     </div>
   );
 };

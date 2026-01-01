@@ -56,8 +56,12 @@ export const FinalScoreboardPage = () => {
 
   if (isLoading || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
+      <div 
+        data-page="FinalScoreboardPage"
+        data-state="loading"
+        className="scoreboard-page scoreboard-page--loading min-h-screen flex items-center justify-center"
+      >
+        <div className="scoreboard-page__loader animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -81,23 +85,27 @@ export const FinalScoreboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-midnight">
+    <div 
+      data-page="FinalScoreboardPage"
+      data-event-id={event.id}
+      className="scoreboard-page min-h-screen bg-midnight"
+    >
       {/* Header */}
-      <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between relative">
+      <header className="scoreboard-page__header border-b border-storm bg-obsidian/50">
+        <div className="scoreboard-page__header-container max-w-5xl mx-auto px-4 py-3">
+          <div className="scoreboard-page__header-row flex items-center justify-between relative">
             {/* Left: Previous + Home */}
-            <div className="flex items-center gap-4">
+            <div className="scoreboard-page__nav-left flex items-center gap-4">
               <button
                 onClick={() => navigate(`/event/${compositeId}/round/${lastRound}`)}
-                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                className="scoreboard-page__back-link flex items-center gap-2 text-mist hover:text-snow transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="text-xs uppercase tracking-wide hidden sm:inline">Round {lastRound}</span>
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                className="scoreboard-page__home-btn p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
                 title="Go to Home"
               >
                 <Home className="w-5 h-5" />
@@ -105,15 +113,15 @@ export const FinalScoreboardPage = () => {
             </div>
             
             {/* Center: Status badge */}
-            <div className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-success" />
-              <span className="text-sm uppercase tracking-widest font-semibold text-success">
+            <div className="scoreboard-page__status-badge flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full">
+              <span className="scoreboard-page__status-indicator w-2 h-2 rounded-full bg-success" />
+              <span className="scoreboard-page__status-text text-sm uppercase tracking-widest font-semibold text-success">
                 Completed
               </span>
             </div>
             
             {/* Right: Theme */}
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="scoreboard-page__theme-btn">
               <Sun className="w-5 h-5" />
             </Button>
           </div>
@@ -121,40 +129,43 @@ export const FinalScoreboardPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="scoreboard-page__main max-w-5xl mx-auto px-4 py-8">
         {/* Event Info */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-3">
-            <span className="text-snow">{event.name}: </span>
-            <span className="text-arcane italic">
+        <div className="scoreboard-page__event-info mb-8">
+          <h1 className="scoreboard-page__event-title text-4xl font-bold mb-3">
+            <span className="scoreboard-page__event-name text-snow">{event.name}: </span>
+            <span className="scoreboard-page__event-set text-arcane italic">
               {getSetDisplay()}
             </span>
           </h1>
-          <div className="flex items-center gap-4 text-sm text-mist">
-            <span className="flex items-center gap-2">
+          <div className="scoreboard-page__event-meta flex items-center gap-4 text-sm text-mist">
+            <span className="scoreboard-page__meta-type flex items-center gap-2">
               <span className="w-4 h-4 bg-slate rounded flex items-center justify-center text-xs">📦</span>
               {event.type === 'draft' ? 'Booster Draft' : 'Sealed Deck'}
             </span>
-            <span>👥 {event.players.length} Players</span>
-            <span>🏆 {event.settings.totalRounds} Rounds</span>
-            <span>📅 {completedDate}</span>
+            <span className="scoreboard-page__meta-players">👥 {event.players.length} Players</span>
+            <span className="scoreboard-page__meta-rounds">🏆 {event.settings.totalRounds} Rounds</span>
+            <span className="scoreboard-page__meta-date">📅 {completedDate}</span>
           </div>
         </div>
 
         {/* Standings Table */}
-        <div className="bg-obsidian border border-storm rounded-xl overflow-hidden">
+        <div 
+          data-section="standings"
+          className="scoreboard-page__standings-container bg-obsidian border border-storm rounded-xl overflow-hidden"
+        >
           {/* Table Header */}
-          <div className="grid grid-cols-[60px_1fr_140px_120px_100px_60px] gap-4 px-4 py-3 bg-slate/50 text-xs text-mist uppercase tracking-wide">
-            <span>Rank</span>
-            <span>Player</span>
-            <span className="text-center">Colors</span>
-            <span className="text-center">Record</span>
-            <span className="text-right">Stats</span>
-            <span className="text-right">Pts</span>
+          <div className="scoreboard-page__standings-header grid grid-cols-[60px_1fr_140px_120px_100px_60px] gap-4 px-4 py-3 bg-slate/50 text-xs text-mist uppercase tracking-wide">
+            <span className="scoreboard-page__standings-header-rank">Rank</span>
+            <span className="scoreboard-page__standings-header-player">Player</span>
+            <span className="scoreboard-page__standings-header-colors text-center">Colors</span>
+            <span className="scoreboard-page__standings-header-record text-center">Record</span>
+            <span className="scoreboard-page__standings-header-stats text-right">Stats</span>
+            <span className="scoreboard-page__standings-header-points text-right">Pts</span>
           </div>
           
           {/* Rows */}
-          <div className="divide-y divide-storm">
+          <div className="scoreboard-page__standings-list divide-y divide-storm">
             {standings.map((standing, index) => {
               const player = event.players.find(p => p.id === standing.playerId);
               if (!player) return null;
@@ -166,19 +177,26 @@ export const FinalScoreboardPage = () => {
               return (
                 <div
                   key={standing.playerId}
+                  data-rank={rank}
+                  data-player-id={player.id}
+                  data-winner={isWinner || undefined}
+                  data-top3={isTop3 || undefined}
                   className={cn(
+                    'scoreboard-page__standings-row',
+                    isWinner && 'scoreboard-page__standings-row--winner',
+                    isTop3 && !isWinner && 'scoreboard-page__standings-row--top3',
                     'grid grid-cols-[60px_1fr_140px_120px_100px_60px] gap-4 px-4 py-4 items-center',
                     isWinner && 'bg-gradient-to-r from-yellow-500/10 to-transparent border-l-2 border-yellow-500',
                     isTop3 && !isWinner && 'bg-arcane/5'
                   )}
                 >
                   {/* Rank */}
-                  <div className="flex items-center justify-center">
+                  <div className="scoreboard-page__standings-rank flex items-center justify-center">
                     {isWinner ? (
-                      <Trophy className="w-6 h-6 text-yellow-500" />
+                      <Trophy className="scoreboard-page__trophy-icon w-6 h-6 text-yellow-500" />
                     ) : (
                       <span className={cn(
-                        'text-lg font-bold',
+                        'scoreboard-page__rank-number text-lg font-bold',
                         isTop3 ? 'text-snow' : 'text-mist'
                       )}>
                         {rank}
@@ -187,9 +205,9 @@ export const FinalScoreboardPage = () => {
                   </div>
                   
                   {/* Player */}
-                  <div className="flex items-center gap-3">
+                  <div className="scoreboard-page__standings-player flex items-center gap-3">
                     <Avatar name={player.name} size="md" />
-                    <div>
+                    <div className="scoreboard-page__player-info">
                       <EditablePlayerName
                         playerId={player.id}
                         name={player.name}
@@ -197,7 +215,7 @@ export const FinalScoreboardPage = () => {
                         size="md"
                       />
                       {player.deckColors && player.deckColors.length > 0 && (
-                        <p className="text-xs text-mist">
+                        <p className="scoreboard-page__player-colors-text text-xs text-mist">
                           {player.deckColors.map(c => MANA_COLORS[c].name).join(' ')}
                         </p>
                       )}
@@ -205,12 +223,15 @@ export const FinalScoreboardPage = () => {
                   </div>
                   
                   {/* Deck Colors */}
-                  <div className="flex items-center justify-center gap-1">
+                  <div className="scoreboard-page__standings-colors flex items-center justify-center gap-1">
                     {(['W', 'U', 'B', 'R', 'G'] as ManaColor[]).map((color) => (
                       <button
                         key={color}
+                        data-color={color}
+                        data-selected={player.deckColors?.includes(color) || undefined}
                         onClick={() => toggleDeckColor(player.id, color)}
                         className={cn(
+                          'scoreboard-page__color-btn',
                           'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                           MANA_COLORS[color].bg,
                           MANA_COLORS[color].text,
@@ -225,27 +246,27 @@ export const FinalScoreboardPage = () => {
                   </div>
                   
                   {/* Record */}
-                  <div className="flex justify-center">
-                    <Badge variant="muted" className="font-mono">
+                  <div className="scoreboard-page__standings-record flex justify-center">
+                    <Badge variant="muted" className="scoreboard-page__record-badge font-mono">
                       {standing.wins}-{standing.losses}-{standing.draws}
                     </Badge>
                   </div>
                   
                   {/* Stats */}
-                  <div className="text-right">
-                    <p className="text-sm text-snow">
+                  <div className="scoreboard-page__standings-stats text-right">
+                    <p className="scoreboard-page__omw-stat text-sm text-snow">
                       {standing.opponentMatchWinPercentage.toFixed(1)}%
-                      <span className="text-xs text-mist ml-1">OMW</span>
+                      <span className="scoreboard-page__stat-label text-xs text-mist ml-1">OMW</span>
                     </p>
-                    <p className="text-xs text-mist">
+                    <p className="scoreboard-page__gw-stat text-xs text-mist">
                       {standing.gameWinPercentage.toFixed(1)}% GW
                     </p>
                   </div>
                   
                   {/* Points */}
-                  <div className="text-right">
+                  <div className="scoreboard-page__standings-points text-right">
                     <span className={cn(
-                      'text-2xl font-bold',
+                      'scoreboard-page__points-value text-2xl font-bold',
                       standing.points > 0 ? 'text-arcane' : 'text-mist'
                     )}>
                       {standing.points}
@@ -258,27 +279,27 @@ export const FinalScoreboardPage = () => {
         </div>
 
         {/* Legend */}
-        <div className="mt-6 flex items-center justify-between text-xs text-mist">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+        <div className="scoreboard-page__legend mt-6 flex items-center justify-between text-xs text-mist">
+          <div className="scoreboard-page__legend-left flex items-center gap-4">
+            <div className="scoreboard-page__legend-colors flex items-center gap-2">
               {(['W', 'U', 'B', 'R', 'G'] as ManaColor[]).map((color) => (
                 <div
                   key={color}
                   className={cn(
-                    'w-4 h-4 rounded-full',
+                    'scoreboard-page__legend-color-dot w-4 h-4 rounded-full',
                     MANA_COLORS[color].bg
                   )}
                 />
               ))}
-              <span>Deck Colors</span>
+              <span className="scoreboard-page__legend-colors-label">Deck Colors</span>
             </div>
-            <span><strong>OMW%</strong> Opponent Match Win %</span>
+            <span className="scoreboard-page__legend-omw"><strong>OMW%</strong> Opponent Match Win %</span>
           </div>
-          <span>Official DCI Scoring</span>
+          <span className="scoreboard-page__legend-scoring">Official DCI Scoring</span>
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-mist">
+        <div className="scoreboard-page__copyright mt-8 text-center text-sm text-mist">
           <p>© {new Date().getFullYear()} Ripper Limit. Built for the community.</p>
         </div>
       </main>

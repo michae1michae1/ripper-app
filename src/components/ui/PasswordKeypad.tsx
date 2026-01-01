@@ -61,26 +61,31 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
   const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
 
   return (
-    <div className="min-h-screen bg-midnight flex flex-col items-center justify-center px-4">
+    <div 
+      data-component="PasswordKeypad"
+      className="password-keypad min-h-screen bg-midnight flex flex-col items-center justify-center px-4"
+    >
       {/* Header */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-arcane/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Lock className="w-8 h-8 text-arcane" />
+      <div className="password-keypad__header text-center mb-8">
+        <div className="password-keypad__icon-wrapper w-16 h-16 bg-arcane/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Lock className="password-keypad__icon w-8 h-8 text-arcane" />
         </div>
-        <h1 className="text-2xl font-bold text-snow mb-2">Host Access</h1>
-        <p className="text-mist">Enter your PIN to access event controls</p>
+        <h1 className="password-keypad__title text-2xl font-bold text-snow mb-2">Host Access</h1>
+        <p className="password-keypad__subtitle text-mist">Enter your PIN to access event controls</p>
       </div>
 
       {/* PIN Display */}
-      <div className="flex gap-3 mb-8">
+      <div className="password-keypad__pin-display flex gap-3 mb-8">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
+            data-filled={pin.length > i || undefined}
             className={cn(
+              'password-keypad__pin-digit',
               'w-14 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all',
               pin.length > i
-                ? 'border-arcane bg-arcane/20 text-snow'
-                : 'border-storm bg-slate text-mist'
+                ? 'password-keypad__pin-digit--filled border-arcane bg-arcane/20 text-snow'
+                : 'password-keypad__pin-digit--empty border-storm bg-slate text-mist'
             )}
           >
             {pin.length > i ? '•' : ''}
@@ -90,14 +95,14 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
 
       {/* Error Message */}
       {error && (
-        <p className="text-danger text-sm mb-4 animate-pulse">{error}</p>
+        <p className="password-keypad__error text-danger text-sm mb-4 animate-pulse">{error}</p>
       )}
 
       {/* Keypad */}
-      <div className="grid grid-cols-3 gap-3 mb-8">
+      <div className="password-keypad__grid grid grid-cols-3 gap-3 mb-8">
         {numbers.map((num, index) => {
           if (num === '') {
-            return <div key={index} className="w-20 h-16" />;
+            return <div key={index} className="password-keypad__empty-cell w-20 h-16" />;
           }
           
           if (num === 'del') {
@@ -106,7 +111,7 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
                 key={index}
                 onClick={handleDelete}
                 disabled={isVerifying || pin.length === 0}
-                className="w-20 h-16 rounded-xl bg-slate border border-storm flex items-center justify-center text-mist hover:bg-storm hover:text-snow transition-all disabled:opacity-50"
+                className="password-keypad__key password-keypad__key--delete w-20 h-16 rounded-xl bg-slate border border-storm flex items-center justify-center text-mist hover:bg-storm hover:text-snow transition-all disabled:opacity-50"
               >
                 <Delete className="w-6 h-6" />
               </button>
@@ -116,9 +121,10 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
           return (
             <button
               key={index}
+              data-key={num}
               onClick={() => handleNumberPress(num)}
               disabled={isVerifying}
-              className="w-20 h-16 rounded-xl bg-slate border border-storm text-2xl font-semibold text-snow hover:bg-storm hover:border-arcane transition-all disabled:opacity-50 active:scale-95"
+              className="password-keypad__key password-keypad__key--number w-20 h-16 rounded-xl bg-slate border border-storm text-2xl font-semibold text-snow hover:bg-storm hover:border-arcane transition-all disabled:opacity-50 active:scale-95"
             >
               {num}
             </button>
@@ -128,9 +134,9 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
 
       {/* Loading indicator */}
       {isVerifying && (
-        <div className="flex items-center gap-2 text-mist mb-4">
-          <div className="w-4 h-4 border-2 border-arcane border-t-transparent rounded-full animate-spin" />
-          <span>Verifying...</span>
+        <div className="password-keypad__verifying flex items-center gap-2 text-mist mb-4">
+          <div className="password-keypad__verifying-spinner w-4 h-4 border-2 border-arcane border-t-transparent rounded-full animate-spin" />
+          <span className="password-keypad__verifying-text">Verifying...</span>
         </div>
       )}
 
@@ -139,7 +145,7 @@ export const PasswordKeypad = ({ onSuccess, onGoBack, showGoBack = false }: Pass
         <Button
           variant="ghost"
           onClick={onGoBack}
-          className="mt-4"
+          className="password-keypad__back-btn mt-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Go Back to Event

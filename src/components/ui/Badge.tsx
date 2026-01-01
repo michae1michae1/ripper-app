@@ -19,7 +19,11 @@ const variantStyles: Record<BadgeVariant, string> = {
 export const Badge = ({ children, variant = 'muted', className }: BadgeProps) => {
   return (
     <span
+      data-component="Badge"
+      data-variant={variant}
       className={cn(
+        'ui-badge',
+        `ui-badge--${variant}`,
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
         variantStyles[variant],
         className

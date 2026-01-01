@@ -22,14 +22,19 @@ export const TimerControls = ({
   className,
 }: TimerControlsProps) => {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div 
+      data-component="TimerControls"
+      data-running={isRunning || undefined}
+      className={cn('timer-controls flex items-center gap-2', className)}
+    >
       {showAdjust && onAdjust && (
-        <div className="flex items-center gap-1 bg-slate rounded-lg p-1">
+        <div className="timer-controls__adjust-group flex items-center gap-1 bg-slate rounded-lg p-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onAdjust(-10)}
             title="Remove 10 seconds"
+            className="timer-controls__decrease-btn"
           >
             <Minus className="w-4 h-4" />
           </Button>
@@ -38,6 +43,7 @@ export const TimerControls = ({
             size="icon"
             onClick={() => onAdjust(10)}
             title="Add 10 seconds"
+            className="timer-controls__increase-btn"
           >
             <Plus className="w-4 h-4" />
           </Button>
@@ -49,6 +55,7 @@ export const TimerControls = ({
         size="icon"
         onClick={onReset}
         title="Reset timer"
+        className="timer-controls__reset-btn"
       >
         <RotateCcw className="w-4 h-4" />
       </Button>
@@ -56,7 +63,7 @@ export const TimerControls = ({
       <Button
         variant="primary"
         onClick={isRunning ? onPause : onStart}
-        className="px-6"
+        className="timer-controls__toggle-btn px-6"
       >
         {isRunning ? (
           <>
@@ -71,7 +78,7 @@ export const TimerControls = ({
         )}
       </Button>
       
-      <Button variant="ghost" size="icon" title="Settings">
+      <Button variant="ghost" size="icon" title="Settings" className="timer-controls__settings-btn">
         <Settings className="w-4 h-4" />
       </Button>
     </div>

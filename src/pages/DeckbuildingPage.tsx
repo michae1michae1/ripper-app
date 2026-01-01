@@ -145,8 +145,12 @@ export const DeckbuildingPage = () => {
 
   if (isLoading || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
+      <div 
+        data-page="DeckbuildingPage"
+        data-state="loading"
+        className="deckbuilding-page deckbuilding-page--loading min-h-screen flex items-center justify-center"
+      >
+        <div className="deckbuilding-page__loader animate-spin w-8 h-8 border-2 border-arcane border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -171,16 +175,22 @@ export const DeckbuildingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-midnight flex flex-col">
+    <div 
+      data-page="DeckbuildingPage"
+      data-event-id={event.id}
+      data-started={deckbuildingStarted || undefined}
+      data-expired={isExpired || undefined}
+      className="deckbuilding-page min-h-screen bg-midnight flex flex-col"
+    >
       {/* Header */}
-      <header className="border-b border-storm bg-obsidian/50">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between relative">
+      <header className="deckbuilding-page__header border-b border-storm bg-obsidian/50">
+        <div className="deckbuilding-page__header-container max-w-6xl mx-auto px-4 py-3">
+          <div className="deckbuilding-page__header-row flex items-center justify-between relative">
             {/* Left: Previous + Home */}
-            <div className="flex items-center gap-4">
+            <div className="deckbuilding-page__nav-left flex items-center gap-4">
               <button
                 onClick={handleGoBack}
-                className="flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                className="deckbuilding-page__back-link flex items-center gap-2 text-mist hover:text-snow transition-colors"
                 title={!isDraft ? "Admin access required" : undefined}
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -189,7 +199,7 @@ export const DeckbuildingPage = () => {
               </button>
               <button
                 onClick={handleGoHome}
-                className="p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
+                className="deckbuilding-page__home-btn p-2 text-mist hover:text-snow transition-colors rounded-lg hover:bg-slate"
                 title="Go to Home"
               >
                 <Home className="w-5 h-5" />
@@ -199,20 +209,22 @@ export const DeckbuildingPage = () => {
             {/* Center: Status badge - clickable to start deckbuilding */}
             <button
               onClick={!deckbuildingStarted ? handleStartDeckbuilding : undefined}
+              data-status={isExpired ? 'complete' : deckbuildingStarted ? (isRunning ? 'running' : 'paused') : 'pending'}
               className={cn(
+                "deckbuilding-page__status-badge",
                 "flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full transition-all",
                 !deckbuildingStarted && "bg-warning/20 hover:bg-warning/30 cursor-pointer",
                 deckbuildingStarted && "cursor-default"
               )}
             >
               <span className={cn(
-                "w-2 h-2 rounded-full",
+                "deckbuilding-page__status-indicator w-2 h-2 rounded-full",
                 getStatusColor(),
                 !deckbuildingStarted && "animate-pulse",
                 isRunning && "animate-pulse"
               )} />
               <span className={cn(
-                "text-sm uppercase tracking-widest font-semibold",
+                "deckbuilding-page__status-text text-sm uppercase tracking-widest font-semibold",
                 !deckbuildingStarted && "text-warning",
                 isExpired && "text-success",
                 deckbuildingStarted && !isExpired && isRunning && "text-cyan-400",
@@ -223,13 +235,13 @@ export const DeckbuildingPage = () => {
             </button>
             
             {/* Right: Theme + Next Round */}
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon">
+            <div className="deckbuilding-page__nav-right flex items-center gap-4">
+              <Button variant="ghost" size="icon" className="deckbuilding-page__theme-btn">
                 <Sun className="w-5 h-5" />
               </Button>
               <button
                 onClick={handleAdvanceToRounds}
-                className="flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
+                className="deckbuilding-page__next-link flex items-center gap-2 text-sm text-mist hover:text-snow transition-colors"
               >
                 <span className="text-xs uppercase tracking-wide hidden sm:inline">Next</span>
                 <span className="font-medium text-snow hidden sm:inline">Round 1</span>
@@ -241,15 +253,15 @@ export const DeckbuildingPage = () => {
       </header>
 
       {/* Share Link Bar */}
-      <div className="bg-slate/50 border-b border-storm">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-mist">Event Code:</span>
+      <div className="deckbuilding-page__share-bar bg-slate/50 border-b border-storm">
+        <div className="deckbuilding-page__share-bar-container max-w-6xl mx-auto px-4 py-3">
+          <div className="deckbuilding-page__share-bar-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="deckbuilding-page__event-code-section flex items-center gap-4">
+              <div className="deckbuilding-page__event-code flex items-center gap-2">
+                <span className="deckbuilding-page__event-code-label text-sm text-mist">Event Code:</span>
                 <button
                   onClick={handleCopyCode}
-                  className="flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
+                  className="deckbuilding-page__event-code-value flex items-center gap-2 bg-arcane/20 text-arcane font-mono text-lg font-bold px-3 py-1 rounded-lg hover:bg-arcane/30 transition-colors"
                 >
                   {event.eventCode}
                   {codeCopied ? (
@@ -260,15 +272,16 @@ export const DeckbuildingPage = () => {
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <LinkIcon className="w-4 h-4 text-mist" />
-              <code className="text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
+            <div className="deckbuilding-page__share-link flex items-center gap-2">
+              <LinkIcon className="deckbuilding-page__share-link-icon w-4 h-4 text-mist" />
+              <code className="deckbuilding-page__share-link-url text-sm text-silver bg-slate px-3 py-1 rounded-lg font-mono">
                 {window.location.origin}/event/{compositeId}/deckbuilding
               </code>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleCopyLink}
+                className="deckbuilding-page__copy-link-btn"
               >
                 {linkCopied ? (
                   <>
@@ -288,17 +301,20 @@ export const DeckbuildingPage = () => {
       </div>
 
       {/* Main Content - Centered Timer */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <main className="deckbuilding-page__main flex-1 flex flex-col items-center justify-center px-4 py-8">
         {/* Timer Section - Same style as Draft page */}
-        <div className="bg-obsidian rounded-xl p-8 shadow-lg shadow-black/20">
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-6">
+        <div 
+          data-section="timer-section"
+          className="deckbuilding-page__timer-section bg-obsidian rounded-xl p-8 shadow-lg shadow-black/20"
+        >
+          <div className="deckbuilding-page__timer-area flex flex-col items-center">
+            <div className="deckbuilding-page__timer-controls flex items-center gap-6">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleAdjust(-60)}
                 title="Remove 1 minute"
-                className="text-mist hover:text-snow w-12 h-12"
+                className="deckbuilding-page__timer-decrease text-mist hover:text-snow w-12 h-12"
                 disabled={!deckbuildingStarted}
               >
                 <Minus className="w-6 h-6" />
@@ -308,7 +324,7 @@ export const DeckbuildingPage = () => {
                 onClick={handleTimerToggle}
                 disabled={!deckbuildingStarted}
                 className={cn(
-                  "relative group",
+                  "deckbuilding-page__timer-display-btn relative group",
                   deckbuildingStarted && "cursor-pointer"
                 )}
               >
@@ -320,7 +336,7 @@ export const DeckbuildingPage = () => {
                 />
                 {/* Play/Pause overlay - only show when deckbuilding started */}
                 {deckbuildingStarted && (
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
+                  <div className="deckbuilding-page__timer-overlay absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 rounded-lg transition-opacity">
                     {isRunning ? (
                       <Pause className="w-12 h-12 text-white" />
                     ) : (
@@ -335,7 +351,7 @@ export const DeckbuildingPage = () => {
                 size="icon"
                 onClick={() => handleAdjust(60)}
                 title="Add 1 minute"
-                className="text-mist hover:text-snow w-12 h-12"
+                className="deckbuilding-page__timer-increase text-mist hover:text-snow w-12 h-12"
                 disabled={!deckbuildingStarted}
               >
                 <Plus className="w-6 h-6" />
@@ -346,11 +362,11 @@ export const DeckbuildingPage = () => {
       </main>
 
       {/* Footer - Keyboard hints */}
-      <footer className="border-t border-storm bg-obsidian/50 py-3">
-        <div className="max-w-6xl mx-auto px-4 flex justify-center">
-          <div className="flex items-center gap-2 text-xs text-mist">
-            <kbd className="px-2 py-0.5 bg-slate rounded border border-storm font-mono">Space</kbd>
-            <span>to pause/resume</span>
+      <footer className="deckbuilding-page__footer border-t border-storm bg-obsidian/50 py-3">
+        <div className="deckbuilding-page__footer-container max-w-6xl mx-auto px-4 flex justify-center">
+          <div className="deckbuilding-page__keyboard-hint flex items-center gap-2 text-xs text-mist">
+            <kbd className="deckbuilding-page__keyboard-key px-2 py-0.5 bg-slate rounded border border-storm font-mono">Space</kbd>
+            <span className="deckbuilding-page__keyboard-hint-text">to pause/resume</span>
           </div>
         </div>
       </footer>

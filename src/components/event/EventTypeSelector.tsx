@@ -31,16 +31,20 @@ const typeOptions: TypeOption[] = [
 
 export const EventTypeSelector = ({ value, onChange }: EventTypeSelectorProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div 
+      data-component="EventTypeSelector"
+      data-selected-type={value}
+      className="event-type-selector grid grid-cols-1 md:grid-cols-2 gap-4"
+    >
       {typeOptions.map((option) => (
         <Card
           key={option.type}
           selected={value === option.type}
           onClick={() => onChange(option.type)}
-          className="relative"
+          className={`event-type-selector__option event-type-selector__option--${option.type} relative`}
         >
           {value === option.type && (
-            <div className="absolute top-3 right-3 w-5 h-5 bg-arcane rounded-full flex items-center justify-center">
+            <div className="event-type-selector__check-icon absolute top-3 right-3 w-5 h-5 bg-arcane rounded-full flex items-center justify-center">
               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -50,13 +54,13 @@ export const EventTypeSelector = ({ value, onChange }: EventTypeSelectorProps) =
               </svg>
             </div>
           )}
-          <div className="flex flex-col gap-3">
-            <div className="w-10 h-10 bg-slate rounded-lg flex items-center justify-center text-arcane-bright">
+          <div className="event-type-selector__content flex flex-col gap-3">
+            <div className="event-type-selector__icon-wrapper w-10 h-10 bg-slate rounded-lg flex items-center justify-center text-arcane-bright">
               {option.icon}
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-snow">{option.title}</h3>
-              <p className="text-sm text-mist mt-1">{option.description}</p>
+            <div className="event-type-selector__text">
+              <h3 className="event-type-selector__title text-lg font-semibold text-snow">{option.title}</h3>
+              <p className="event-type-selector__description text-sm text-mist mt-1">{option.description}</p>
             </div>
           </div>
         </Card>

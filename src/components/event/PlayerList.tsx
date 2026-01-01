@@ -25,11 +25,16 @@ export const PlayerList = ({
   const needsMore = eventType === 'draft' && playerCount < OPTIMAL_DRAFT_PLAYERS;
   
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-snow uppercase tracking-wide">Players</h3>
-          <span className="text-sm text-mist">
+    <div 
+      data-component="PlayerList"
+      data-player-count={playerCount}
+      data-event-type={eventType}
+      className="player-list space-y-4"
+    >
+      <div className="player-list__header flex items-center justify-between">
+        <div className="player-list__title-group flex items-center gap-2">
+          <h3 className="player-list__title text-sm font-semibold text-snow uppercase tracking-wide">Players</h3>
+          <span className="player-list__count text-sm text-mist">
             {playerCount} / {eventType === 'draft' ? OPTIMAL_DRAFT_PLAYERS : MAX_PLAYERS}
           </span>
         </div>
@@ -38,7 +43,7 @@ export const PlayerList = ({
           size="sm"
           onClick={onRandomize}
           disabled={playerCount < 2}
-          className="gap-1.5"
+          className="player-list__randomize-btn gap-1.5"
         >
           <Shuffle className="w-4 h-4" />
           Randomize
@@ -47,7 +52,7 @@ export const PlayerList = ({
       
       <PlayerInput onAddPlayer={onAddPlayer} disabled={isAtMax} />
       
-      <div className="border border-storm rounded-lg divide-y divide-storm">
+      <div className="player-list__items border border-storm rounded-lg divide-y divide-storm">
         {players.map((player, index) => (
           <PlayerListItem
             key={player.id}
@@ -60,11 +65,11 @@ export const PlayerList = ({
       </div>
       
       {needsMore && (
-        <div className="flex items-start gap-2 bg-slate/50 rounded-lg p-3">
-          <Info className="w-4 h-4 text-mist mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-mist">
+        <div className="player-list__notice flex items-start gap-2 bg-slate/50 rounded-lg p-3">
+          <Info className="player-list__notice-icon w-4 h-4 text-mist mt-0.5 flex-shrink-0" />
+          <p className="player-list__notice-text text-sm text-mist">
             Drafts are optimized for {OPTIMAL_DRAFT_PLAYERS} players. You need{' '}
-            <span className="text-snow font-medium">
+            <span className="player-list__notice-count text-snow font-medium">
               {OPTIMAL_DRAFT_PLAYERS - playerCount} more
             </span>.
           </p>

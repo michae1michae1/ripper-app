@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Trophy, Sun, Home, Settings } from "lucide-react";
+import { ArrowLeft, Trophy, Home, Settings } from "lucide-react";
 import {
   Button,
   Badge,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2, Settings, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2, Settings, Users } from 'lucide-react';
 import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { PodSeating } from '@/components/draft';

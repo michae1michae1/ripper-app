@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Sun, Home, Settings } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Home, Settings } from 'lucide-react';
 import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';

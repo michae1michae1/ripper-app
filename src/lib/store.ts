@@ -696,7 +696,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
     } else if (event.currentPhase === 'rounds') {
       // Find the current round and adjust its timer
       const updatedRounds = event.rounds.map(round => {
-        if (round.timerStartedAt && !round.endedAt) {
+        if (round.timerStartedAt && !round.isComplete) {
           return {
             ...round,
             timerDuration: Math.max(60, round.timerDuration + seconds),
@@ -748,12 +748,12 @@ export const useEventStore = create<EventStore>((set, get) => ({
     } else if (event.currentPhase === 'rounds') {
       // Reset the current round's timer (the round that hasn't ended yet)
       const updatedRounds = event.rounds.map(round => {
-        if (!round.endedAt) {
+        if (!round.isComplete) {
           return {
             ...round,
             timerStartedAt: null,
             timerPausedAt: null,
-            timerDuration: event.settings.roundMinutes * 60,
+            timerDuration: event.settings.roundTimerMinutes * 60,
             isPaused: true,
           };
         }

@@ -293,13 +293,6 @@ export const FinalScoreboardPage = () => {
                           className="font-semibold text-snow"
                           size="md"
                         />
-                        {player.deckColors && player.deckColors.length > 0 && (
-                          <p className="scoreboard-page__player-colors-text text-xs text-mist">
-                            {player.deckColors
-                              .map((c) => MANA_COLORS[c].name)
-                              .join(" ")}
-                          </p>
-                        )}
                       </div>
                     </div>
 

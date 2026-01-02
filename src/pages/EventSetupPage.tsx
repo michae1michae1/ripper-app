@@ -1,34 +1,49 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, Pencil, Check, X } from 'lucide-react';
-import { Button, PasswordKeypad, isHostAuthenticated } from '@/components/ui';
-import { EventTypeSelector, SetSelector, PlayerList } from '@/components/event';
-import { useEventStore } from '@/lib/store';
-import { createEventSession, getEventSession, updateEventSession, checkCodeAvailable } from '@/lib/api';
-import { parseCompositeId, createCompositeId } from '@/lib/generateId';
-import type { EventType } from '@/types/event';
-import { MIN_PLAYERS } from '@/lib/constants';
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  RotateCcw,
+  AlertTriangle,
+  Pencil,
+  Check,
+  X,
+} from "lucide-react";
+import { Button, PasswordKeypad, isHostAuthenticated } from "@/components/ui";
+import { EventTypeSelector, SetSelector, PlayerList } from "@/components/event";
+import { useEventStore } from "@/lib/store";
+import {
+  createEventSession,
+  getEventSession,
+  updateEventSession,
+  checkCodeAvailable,
+} from "@/lib/api";
+import { parseCompositeId, createCompositeId } from "@/lib/generateId";
+import type { EventType } from "@/types/event";
+import { MIN_PLAYERS } from "@/lib/constants";
 
 export const EventSetupPage = () => {
   const navigate = useNavigate();
   const { eventId: rawEventId } = useParams<{ eventId: string }>();
-  
+
   // Parse composite ID to get the actual event ID
-  const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
-  
-  const [eventType, setEventType] = useState<EventType>('draft');
-  const [hostName, setHostName] = useState('');
+  const eventId = rawEventId
+    ? parseCompositeId(rawEventId)?.id || rawEventId
+    : undefined;
+
+  const [eventType, setEventType] = useState<EventType>("draft");
+  const [hostName, setHostName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showHostInput, setShowHostInput] = useState(!eventId);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  
+
   // Event code editing state
   const [isEditingCode, setIsEditingCode] = useState(false);
-  const [editingCode, setEditingCode] = useState('');
-  const [codeError, setCodeError] = useState('');
+  const [editingCode, setEditingCode] = useState("");
+  const [codeError, setCodeError] = useState("");
   const [isCheckingCode, setIsCheckingCode] = useState(false);
-  
+
   const {
     event,
     createEvent,
@@ -59,21 +74,22 @@ export const EventSetupPage = () => {
   // Load existing event if eventId is provided and authenticated
   useEffect(() => {
     // Check if we need to load: no event, or event ID mismatch (switching events)
-    const needsLoad = eventId && isAuthenticated && (!event || event.id !== eventId);
+    const needsLoad =
+      eventId && isAuthenticated && (!event || event.id !== eventId);
     if (needsLoad) {
       setLoading(true);
       getEventSession(eventId).then(({ data, error: apiError }) => {
         if (data) {
           loadEvent(data);
         } else {
-          setError(apiError || 'Event not found');
+          setError(apiError || "Event not found");
         }
       });
     }
   }, [eventId, event, loadEvent, setLoading, setError, isAuthenticated]);
 
   const getCompositeId = () => {
-    if (!event) return '';
+    if (!event) return "";
     return createCompositeId(event.eventCode, event.id);
   };
 
@@ -85,35 +101,35 @@ export const EventSetupPage = () => {
     // Go back to current phase based on event state
     if (event) {
       const compositeId = getCompositeId();
-      if (event.currentPhase === 'drafting') {
+      if (event.currentPhase === "drafting") {
         navigate(`/event/${compositeId}/draft`);
-      } else if (event.currentPhase === 'deckbuilding') {
+      } else if (event.currentPhase === "deckbuilding") {
         navigate(`/event/${compositeId}/deckbuilding`);
-      } else if (event.currentPhase === 'rounds') {
+      } else if (event.currentPhase === "rounds") {
         navigate(`/event/${compositeId}/round/${event.currentRound}`);
-      } else if (event.currentPhase === 'complete') {
+      } else if (event.currentPhase === "complete") {
         navigate(`/event/${compositeId}/results`);
       } else {
-        navigate('/');
+        navigate("/");
       }
     } else {
-      navigate('/');
+      navigate("/");
     }
   };
 
   const handleCreateEvent = async () => {
     if (!hostName.trim()) return;
-    
+
     setIsCreating(true);
     const newEvent = createEvent(eventType, hostName.trim());
-    
+
     const { error: apiError } = await createEventSession(newEvent);
     if (apiError) {
       setError(apiError);
       setIsCreating(false);
       return;
     }
-    
+
     setShowHostInput(false);
     setIsCreating(false);
     const compositeId = createCompositeId(newEvent.eventCode, newEvent.id);
@@ -145,11 +161,12 @@ export const EventSetupPage = () => {
     if (!event) return;
     startEvent();
     await updateEventSession(event.id, useEventStore.getState().event!);
-    
+
     const compositeId = getCompositeId();
-    const nextPath = event.type === 'draft'
-      ? `/event/${compositeId}/draft`
-      : `/event/${compositeId}/deckbuilding`;
+    const nextPath =
+      event.type === "draft"
+        ? `/event/${compositeId}/draft`
+        : `/event/${compositeId}/deckbuilding`;
     navigate(nextPath);
   };
 
@@ -163,57 +180,57 @@ export const EventSetupPage = () => {
   const handleEditCode = () => {
     if (!event) return;
     setEditingCode(event.eventCode);
-    setCodeError('');
+    setCodeError("");
     setIsEditingCode(true);
   };
 
   const handleCancelEditCode = () => {
     setIsEditingCode(false);
-    setEditingCode('');
-    setCodeError('');
+    setEditingCode("");
+    setCodeError("");
   };
 
   const handleSaveCode = async () => {
     if (!event) return;
-    
+
     const normalizedCode = editingCode.toUpperCase().trim();
-    
+
     // Validate format
     if (!/^[A-Z0-9]{4}$/.test(normalizedCode)) {
-      setCodeError('Code must be exactly 4 characters (letters and numbers)');
+      setCodeError("Code must be exactly 4 characters (letters and numbers)");
       return;
     }
-    
+
     // Skip if unchanged
     if (normalizedCode === event.eventCode) {
       setIsEditingCode(false);
       return;
     }
-    
+
     // Check availability
     setIsCheckingCode(true);
     const isAvailable = await checkCodeAvailable(normalizedCode);
     setIsCheckingCode(false);
-    
+
     if (!isAvailable) {
-      setCodeError('This code is already in use');
+      setCodeError("This code is already in use");
       return;
     }
-    
+
     // Update the code
     updateEventCode(normalizedCode);
     await updateEventSession(event.id, useEventStore.getState().event!);
-    
+
     // Update URL with new composite ID
     const newCompositeId = createCompositeId(normalizedCode, event.id);
     navigate(`/event/${newCompositeId}`, { replace: true });
-    
+
     setIsEditingCode(false);
-    setEditingCode('');
+    setEditingCode("");
   };
 
   const canStart = event && event.players.length >= MIN_PLAYERS;
-  const hasProgress = event && event.currentPhase !== 'setup';
+  const hasProgress = event && event.currentPhase !== "setup";
 
   // Show password keypad for existing events if not authenticated
   if (eventId && !isAuthenticated) {
@@ -221,14 +238,14 @@ export const EventSetupPage = () => {
       <PasswordKeypad
         onSuccess={handlePasswordSuccess}
         onGoBack={handleGoBack}
-        showGoBack={event?.currentPhase !== 'setup'}
+        showGoBack={event?.currentPhase !== "setup"}
       />
     );
   }
 
   if (isLoading) {
     return (
-      <div 
+      <div
         data-page="EventSetupPage"
         data-state="loading"
         className="event-setup-page event-setup-page--loading min-h-screen flex items-center justify-center"
@@ -240,13 +257,18 @@ export const EventSetupPage = () => {
 
   if (error && !event) {
     return (
-      <div 
+      <div
         data-page="EventSetupPage"
         data-state="error"
         className="event-setup-page event-setup-page--error min-h-screen flex flex-col items-center justify-center gap-4"
       >
         <p className="event-setup-page__error-message text-danger">{error}</p>
-        <Button onClick={() => navigate('/')} className="event-setup-page__back-btn">Back to Home</Button>
+        <Button
+          onClick={() => navigate("/")}
+          className="event-setup-page__back-btn"
+        >
+          Back to Home
+        </Button>
       </div>
     );
   }
@@ -254,18 +276,22 @@ export const EventSetupPage = () => {
   // Show host name input for new events
   if (showHostInput) {
     return (
-      <div 
+      <div
         data-page="EventSetupPage"
         data-state="create-new"
         className="event-setup-page event-setup-page--create min-h-screen bg-midnight"
       >
         <div className="event-setup-page__create-container max-w-2xl mx-auto px-4 py-8">
-          <h1 className="event-setup-page__create-title text-3xl font-bold text-snow mb-2">Create New Event</h1>
-          <p className="event-setup-page__create-subtitle text-mist mb-8">Set up your MTG limited event</p>
-          
+          <h1 className="event-setup-page__create-title text-3xl font-bold text-snow mb-2">
+            Create New Event
+          </h1>
+          <p className="event-setup-page__create-subtitle text-mist mb-8">
+            Set up your MTG limited event
+          </p>
+
           <div className="event-setup-page__create-form space-y-8">
             <EventTypeSelector value={eventType} onChange={setEventType} />
-            
+
             <div className="event-setup-page__host-name-field space-y-4">
               <label className="event-setup-page__host-name-label block text-sm font-semibold text-snow uppercase tracking-wide">
                 Your Name (Host)
@@ -274,13 +300,13 @@ export const EventSetupPage = () => {
                 type="text"
                 value={hostName}
                 onChange={(e) => setHostName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateEvent()}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateEvent()}
                 placeholder="Enter your name..."
                 className="event-setup-page__host-name-input input"
                 autoFocus
               />
             </div>
-            
+
             <Button
               onClick={handleCreateEvent}
               isLoading={isCreating}
@@ -298,7 +324,7 @@ export const EventSetupPage = () => {
   }
 
   return (
-    <div 
+    <div
       data-page="EventSetupPage"
       data-state="setup"
       data-event-id={event?.id}
@@ -311,7 +337,9 @@ export const EventSetupPage = () => {
             <div className="event-setup-page__brand-logo w-8 h-8 bg-arcane rounded-lg flex items-center justify-center font-bold text-white text-sm">
               RL
             </div>
-            <span className="event-setup-page__brand-name font-semibold text-snow">Ripper Limit</span>
+            <span className="event-setup-page__brand-name font-semibold text-snow">
+              Ripper Limit
+            </span>
           </div>
         </div>
       </header>
@@ -319,7 +347,7 @@ export const EventSetupPage = () => {
       {/* Main Content */}
       <main className="event-setup-page__main max-w-2xl mx-auto px-4 py-8 pb-32">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           className="event-setup-page__back-link flex items-center gap-2 text-mist hover:text-snow transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -327,7 +355,9 @@ export const EventSetupPage = () => {
         </button>
 
         <div className="event-setup-page__title-row flex items-center justify-between mb-8">
-          <h1 className="event-setup-page__title text-3xl font-bold text-snow">Event Setup</h1>
+          <h1 className="event-setup-page__title text-3xl font-bold text-snow">
+            Event Setup
+          </h1>
           {event && (
             <Button
               variant="ghost"
@@ -343,7 +373,7 @@ export const EventSetupPage = () => {
         {event && (
           <div className="event-setup-page__form space-y-8">
             {/* Event Code Display */}
-            <div 
+            <div
               data-section="event-code"
               className="event-setup-page__event-code bg-obsidian border border-storm rounded-xl p-6"
             >
@@ -361,7 +391,7 @@ export const EventSetupPage = () => {
                   </button>
                 )}
               </div>
-              
+
               {isEditingCode ? (
                 <div className="event-setup-page__code-editor space-y-3">
                   <div className="event-setup-page__code-editor-row flex items-center gap-2">
@@ -369,8 +399,10 @@ export const EventSetupPage = () => {
                       type="text"
                       value={editingCode}
                       onChange={(e) => {
-                        setEditingCode(e.target.value.toUpperCase().slice(0, 4));
-                        setCodeError('');
+                        setEditingCode(
+                          e.target.value.toUpperCase().slice(0, 4)
+                        );
+                        setCodeError("");
                       }}
                       className="event-setup-page__code-input flex-1 px-4 py-3 bg-slate border border-storm rounded-xl text-snow text-2xl font-mono tracking-widest text-center focus:outline-none focus:border-arcane transition-colors uppercase"
                       maxLength={4}
@@ -395,10 +427,14 @@ export const EventSetupPage = () => {
                     </Button>
                   </div>
                   {codeError && (
-                    <p className="event-setup-page__code-error text-danger text-sm">{codeError}</p>
+                    <p className="event-setup-page__code-error text-danger text-sm">
+                      {codeError}
+                    </p>
                   )}
                   {isCheckingCode && (
-                    <p className="event-setup-page__code-checking text-mist text-sm">Checking availability...</p>
+                    <p className="event-setup-page__code-checking text-mist text-sm">
+                      Checking availability...
+                    </p>
                   )}
                 </div>
               ) : (
@@ -406,7 +442,7 @@ export const EventSetupPage = () => {
                   {event.eventCode}
                 </div>
               )}
-              
+
               <p className="event-setup-page__code-hint text-sm text-mist mt-3">
                 Share this code with players so they can join from the homepage
               </p>
@@ -418,7 +454,10 @@ export const EventSetupPage = () => {
                 useEventStore.setState((state) => ({
                   event: state.event ? { ...state.event, type } : null,
                 }));
-                await updateEventSession(event.id, useEventStore.getState().event!);
+                await updateEventSession(
+                  event.id,
+                  useEventStore.getState().event!
+                );
               }}
             />
 
@@ -426,7 +465,10 @@ export const EventSetupPage = () => {
               value={{ code: event.setCode, name: event.setName }}
               onChange={async (code, name) => {
                 setEventSet(code, name);
-                await updateEventSession(event.id, useEventStore.getState().event!);
+                await updateEventSession(
+                  event.id,
+                  useEventStore.getState().event!
+                );
               }}
             />
 
@@ -446,13 +488,17 @@ export const EventSetupPage = () => {
         <footer className="event-setup-page__footer fixed bottom-0 left-0 right-0 border-t border-storm bg-obsidian/95 backdrop-blur">
           <div className="event-setup-page__footer-container max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="event-setup-page__footer-info">
-              <p className="event-setup-page__footer-ready text-snow font-medium">Ready to start?</p>
+              <p className="event-setup-page__footer-ready text-snow font-medium">
+                Ready to start?
+              </p>
               <p className="event-setup-page__footer-hint text-sm text-mist">
-                A new {event.type} instance will be created.
+                Create new {event.type} instance.
               </p>
             </div>
             <div className="event-setup-page__footer-actions flex items-center gap-3">
-              <span className="event-setup-page__keyboard-hint text-xs text-mist hidden sm:block">⌘ + Enter to start</span>
+              <span className="event-setup-page__keyboard-hint text-xs text-mist hidden sm:block">
+                ⌘ + Enter to start
+              </span>
               <Button
                 onClick={handleStartEvent}
                 disabled={!canStart}
@@ -469,7 +515,7 @@ export const EventSetupPage = () => {
 
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div 
+        <div
           data-component="ResetConfirmModal"
           className="reset-confirm-modal fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         >
@@ -479,26 +525,36 @@ export const EventSetupPage = () => {
                 <AlertTriangle className="reset-confirm-modal__icon w-6 h-6 text-danger" />
               </div>
               <div className="reset-confirm-modal__title-group">
-                <h2 className="reset-confirm-modal__title text-xl font-bold text-snow">Reset Event?</h2>
-                <p className="reset-confirm-modal__subtitle text-sm text-mist">This action cannot be undone</p>
+                <h2 className="reset-confirm-modal__title text-xl font-bold text-snow">
+                  Reset Event?
+                </h2>
+                <p className="reset-confirm-modal__subtitle text-sm text-mist">
+                  This action cannot be undone
+                </p>
               </div>
             </div>
-            
+
             <p className="reset-confirm-modal__description text-silver mb-6">
               This will reset all progress including:
             </p>
             <ul className="reset-confirm-modal__list text-mist text-sm space-y-1 mb-6 ml-4">
-              <li className="reset-confirm-modal__list-item">• All rounds and match results</li>
-              <li className="reset-confirm-modal__list-item">• Draft/deckbuilding progress</li>
+              <li className="reset-confirm-modal__list-item">
+                • All rounds and match results
+              </li>
+              <li className="reset-confirm-modal__list-item">
+                • Draft/deckbuilding progress
+              </li>
               <li className="reset-confirm-modal__list-item">• Timer states</li>
               {hasProgress && (
-                <li className="reset-confirm-modal__list-item reset-confirm-modal__list-item--warning text-warning">• Current phase: {event?.currentPhase}</li>
+                <li className="reset-confirm-modal__list-item reset-confirm-modal__list-item--warning text-warning">
+                  • Current phase: {event?.currentPhase}
+                </li>
               )}
             </ul>
             <p className="reset-confirm-modal__note text-silver mb-6">
               Players will be kept but the event will return to setup.
             </p>
-            
+
             <div className="reset-confirm-modal__actions flex gap-3">
               <Button
                 variant="secondary"

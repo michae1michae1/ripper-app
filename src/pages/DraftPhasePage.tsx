@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2 } from 'lucide-react';
-import { Button, clearHostAuth } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Sun, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2, Settings, Users } from 'lucide-react';
+import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { PodSeating } from '@/components/draft';
 import { useEventStore } from '@/lib/store';
@@ -16,6 +16,7 @@ export const DraftPhasePage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(true);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -180,11 +181,11 @@ export const DraftPhasePage = () => {
     return 'bg-danger';
   };
 
-  const getStatusText = () => {
-    if (isDraftComplete) return 'Draft Complete';
-    if (!draftStarted) return 'Start Draft';
+  const getStatusText = (mobile = false) => {
+    if (isDraftComplete) return mobile ? 'Complete' : 'Draft Complete';
+    if (!draftStarted) return mobile ? 'Start' : 'Start Draft';
     // If timer is disabled, always show "in progress" status
-    if (!timerEnabled || isRunning) return 'Draft In Progress';
+    if (!timerEnabled || isRunning) return mobile ? 'Drafting' : 'Draft In Progress';
     return 'Paused';
   };
 
@@ -245,14 +246,25 @@ export const DraftPhasePage = () => {
                 draftStarted && !isDraftComplete && isRunning && "text-cyan-400",
                 draftStarted && !isDraftComplete && !isRunning && "text-danger"
               )}>
-                {getStatusText()}
+                <span className="sm:hidden">{getStatusText(true)}</span>
+                <span className="hidden sm:inline">{getStatusText()}</span>
               </span>
             </button>
             
-            {/* Right: Theme + Next Deckbuilding */}
+            {/* Right: Options + Next Deckbuilding */}
             <div className="draft-page__nav-right flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="draft-page__theme-btn">
+              {/* Desktop: Theme toggle */}
+              <Button variant="ghost" size="icon" className="draft-page__theme-btn hidden sm:flex">
                 <Sun className="w-5 h-5" />
+              </Button>
+              {/* Mobile: Options drawer trigger */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="draft-page__options-btn sm:hidden"
+                onClick={() => setOptionsOpen(true)}
+              >
+                <Settings className="w-5 h-5" />
               </Button>
               <button
                 onClick={handleMoveToDeckbuilding}
@@ -276,8 +288,8 @@ export const DraftPhasePage = () => {
         </div>
       </header>
 
-      {/* Share Link Bar */}
-      <div className="draft-page__share-bar bg-slate/50 border-b border-storm">
+      {/* Share Link Bar - Hidden on mobile (moved to options drawer) */}
+      <div className="draft-page__share-bar hidden sm:block bg-slate/50 border-b border-storm">
         <div className="draft-page__share-bar-container max-w-6xl mx-auto px-4 py-3">
           <div className="draft-page__share-bar-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="draft-page__event-code-section flex items-center gap-4">
@@ -494,11 +506,36 @@ export const DraftPhasePage = () => {
           )}
         </div>
 
-        {/* Pod Seating - includes pass direction */}
-        <PodSeating
-          players={event.players}
-          passDirection={draftState.passDirection}
-        />
+        {/* Pod Seating - Hidden on mobile */}
+        <div className="draft-page__pod-desktop hidden sm:block">
+          <PodSeating
+            players={event.players}
+            passDirection={draftState.passDirection}
+          />
+        </div>
+
+        {/* Mobile Info Bar - Simplified view */}
+        <div className="draft-page__mobile-info sm:hidden flex items-center justify-center gap-4 py-4">
+          <div className="draft-page__pass-direction inline-flex items-center gap-2 bg-slate/50 rounded-lg px-4 py-2.5">
+            <span className="text-sm font-medium text-mist uppercase tracking-wide">Passing</span>
+            {draftState.passDirection === 'left' ? (
+              <>
+                <span className="text-sm font-medium text-snow capitalize">{draftState.passDirection}</span>
+                <ArrowLeft className="w-4 h-4 text-snow" />
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-medium text-snow capitalize">{draftState.passDirection}</span>
+                <ArrowRight className="w-4 h-4 text-snow" />
+              </>
+            )}
+          </div>
+          <div className="draft-page__player-count inline-flex items-center gap-2 border border-storm rounded-full px-4 py-2.5">
+            <Users className="w-5 h-5 text-mist" />
+            <span className="text-sm font-medium text-snow">{event.players.length}</span>
+            <span className="text-sm font-medium text-mist">Players</span>
+          </div>
+        </div>
 
         {/* Event Log - Clean design without container */}
         <div 
@@ -551,6 +588,14 @@ export const DraftPhasePage = () => {
           </div>
         </div>
       </main>
+
+      {/* Options Drawer - Mobile only */}
+      <OptionsDrawer
+        isOpen={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        eventCode={event.eventCode}
+        eventLink={`${window.location.origin}/event/${compositeId}/draft`}
+      />
     </div>
   );
 };

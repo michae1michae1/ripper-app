@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Sun, Home } from 'lucide-react';
-import { Button, clearHostAuth } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Sun, Home, Settings } from 'lucide-react';
+import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
 import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
@@ -14,6 +14,7 @@ export const DeckbuildingPage = () => {
   const { eventId: rawEventId } = useParams<{ eventId: string }>();
   const [linkCopied, setLinkCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -167,10 +168,10 @@ export const DeckbuildingPage = () => {
     return 'bg-danger';
   };
 
-  const getStatusText = () => {
-    if (!deckbuildingStarted) return 'Start Deckbuilding';
-    if (isExpired) return 'Time Complete';
-    if (isRunning) return 'Building Decks';
+  const getStatusText = (mobile = false) => {
+    if (!deckbuildingStarted) return mobile ? 'Start' : 'Start Deckbuilding';
+    if (isExpired) return mobile ? 'Done' : 'Time Complete';
+    if (isRunning) return mobile ? 'Building' : 'Building Decks';
     return 'Paused';
   };
 
@@ -230,14 +231,25 @@ export const DeckbuildingPage = () => {
                 deckbuildingStarted && !isExpired && isRunning && "text-cyan-400",
                 deckbuildingStarted && !isExpired && !isRunning && "text-danger"
               )}>
-                {getStatusText()}
+                <span className="sm:hidden">{getStatusText(true)}</span>
+                <span className="hidden sm:inline">{getStatusText()}</span>
               </span>
             </button>
             
-            {/* Right: Theme + Next Round */}
+            {/* Right: Options + Next Round */}
             <div className="deckbuilding-page__nav-right flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="deckbuilding-page__theme-btn">
+              {/* Desktop: Theme toggle */}
+              <Button variant="ghost" size="icon" className="deckbuilding-page__theme-btn hidden sm:flex">
                 <Sun className="w-5 h-5" />
+              </Button>
+              {/* Mobile: Options drawer trigger */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="deckbuilding-page__options-btn sm:hidden"
+                onClick={() => setOptionsOpen(true)}
+              >
+                <Settings className="w-5 h-5" />
               </Button>
               <button
                 onClick={handleAdvanceToRounds}
@@ -252,8 +264,8 @@ export const DeckbuildingPage = () => {
         </div>
       </header>
 
-      {/* Share Link Bar */}
-      <div className="deckbuilding-page__share-bar bg-slate/50 border-b border-storm">
+      {/* Share Link Bar - Hidden on mobile (moved to options drawer) */}
+      <div className="deckbuilding-page__share-bar hidden sm:block bg-slate/50 border-b border-storm">
         <div className="deckbuilding-page__share-bar-container max-w-6xl mx-auto px-4 py-3">
           <div className="deckbuilding-page__share-bar-row flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="deckbuilding-page__event-code-section flex items-center gap-4">
@@ -361,8 +373,8 @@ export const DeckbuildingPage = () => {
         </div>
       </main>
 
-      {/* Footer - Keyboard hints */}
-      <footer className="deckbuilding-page__footer border-t border-storm bg-obsidian/50 py-3">
+      {/* Footer - Keyboard hints (hidden on mobile) */}
+      <footer className="deckbuilding-page__footer hidden sm:block border-t border-storm bg-obsidian/50 py-3">
         <div className="deckbuilding-page__footer-container max-w-6xl mx-auto px-4 flex justify-center">
           <div className="deckbuilding-page__keyboard-hint flex items-center gap-2 text-xs text-mist">
             <kbd className="deckbuilding-page__keyboard-key px-2 py-0.5 bg-slate rounded border border-storm font-mono">Space</kbd>
@@ -370,6 +382,14 @@ export const DeckbuildingPage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Options Drawer - Mobile only */}
+      <OptionsDrawer
+        isOpen={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        eventCode={event.eventCode}
+        eventLink={`${window.location.origin}/event/${compositeId}/deckbuilding`}
+      />
     </div>
   );
 };

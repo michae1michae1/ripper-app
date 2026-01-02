@@ -109,6 +109,9 @@ export const EditablePlayerName = ({
     );
   }
 
+  // Check if className contains text-right to determine alignment
+  const isRightAligned = className?.includes('text-right') || className?.includes('!text-right');
+  
   return (
     <button
       data-component="EditablePlayerName"
@@ -116,14 +119,20 @@ export const EditablePlayerName = ({
       onClick={() => setIsEditing(true)}
       className={cn(
         'editable-player-name',
-        'group inline-flex items-center gap-1.5 hover:text-arcane transition-colors text-left',
+        'group inline-flex items-center gap-1.5 hover:text-arcane transition-colors',
+        isRightAligned ? 'text-right justify-end' : 'text-left',
         sizeClasses[size],
         className
       )}
       title="Click to edit name"
     >
+      {isRightAligned && (
+        <Pencil className="editable-player-name__edit-icon w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 order-first" />
+      )}
       <span className="editable-player-name__text truncate">{name}</span>
-      <Pencil className="editable-player-name__edit-icon w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      {!isRightAligned && (
+        <Pencil className="editable-player-name__edit-icon w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      )}
     </button>
   );
 };

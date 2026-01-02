@@ -91,7 +91,9 @@ export const StandingsModal = ({
                     </td>
                     <td className="standings-modal__td standings-modal__td--player py-3 px-4">
                       <div className="standings-modal__player-info flex items-center gap-3">
-                        <Avatar name={player.name} size="sm" />
+                        <div className="hidden sm:block">
+                          <Avatar name={player.name} size="sm" />
+                        </div>
                         <EditablePlayerName
                           playerId={player.id}
                           name={player.name}

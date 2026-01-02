@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Sun, BarChart3, Clock, Home } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { ArrowLeft, ArrowRight, Sun, BarChart3, Clock, Home, Settings } from 'lucide-react';
+import { Button, OptionsDrawer } from '@/components/ui';
 import { MatchCard, StandingsModal } from '@/components/rounds';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
@@ -15,6 +15,7 @@ export const MatchRoundsPage = () => {
   const navigate = useNavigate();
   const { eventId: rawEventId, roundNum } = useParams<{ eventId: string; roundNum: string }>();
   const [showStandings, setShowStandings] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -152,10 +153,10 @@ export const MatchRoundsPage = () => {
     return 'bg-warning';
   };
 
-  const getStatusText = () => {
-    if (allResultsEntered) return 'Ready to Proceed';
-    if (waitingCount > 0) return `Waiting for ${waitingCount} Result${waitingCount > 1 ? 's' : ''}`;
-    return 'In Progress';
+  const getStatusText = (mobile = false) => {
+    if (allResultsEntered) return mobile ? 'Ready' : 'Ready to Proceed';
+    if (waitingCount > 0) return mobile ? 'Waiting' : `Waiting for ${waitingCount} Result${waitingCount > 1 ? 's' : ''}`;
+    return mobile ? 'Playing' : 'In Progress';
   };
 
   return (
@@ -201,24 +202,49 @@ export const MatchRoundsPage = () => {
             >
               <span className={`rounds-page__status-indicator w-2 h-2 rounded-full ${getStatusColor()} ${!allResultsEntered && 'animate-pulse'}`} />
               <span className={`rounds-page__status-text text-sm uppercase tracking-widest font-semibold ${allResultsEntered ? 'text-success' : 'text-warning'}`}>
-                {getStatusText()}
+                <span className="sm:hidden">{getStatusText(true)}</span>
+                <span className="hidden sm:inline">{getStatusText()}</span>
               </span>
             </div>
             
-            {/* Right: Theme + Next */}
+            {/* Right: Options + Next */}
             <div className="rounds-page__nav-right flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="rounds-page__theme-btn">
+              {/* Desktop: Theme toggle */}
+              <Button variant="ghost" size="icon" className="rounds-page__theme-btn hidden sm:flex">
                 <Sun className="w-5 h-5" />
               </Button>
+              {/* Mobile: Options drawer trigger */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounds-page__options-btn sm:hidden"
+                onClick={() => setOptionsOpen(true)}
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
               <button
-                onClick={() => isLastRound 
-                  ? navigate(`/event/${compositeId}/results`)
-                  : navigate(`/event/${compositeId}/round/${roundNumber + 1}`)
-                }
-                className="rounds-page__next-link flex items-center gap-2 text-mist hover:text-snow transition-colors"
+                onClick={() => {
+                  // On mobile, require all results before navigating
+                  if (!allResultsEntered && window.innerWidth < 640) return;
+                  if (isLastRound) {
+                    navigate(`/event/${compositeId}/results`);
+                  } else {
+                    navigate(`/event/${compositeId}/round/${roundNumber + 1}`);
+                  }
+                }}
+                className={cn(
+                  "rounds-page__next-link flex items-center gap-2 transition-colors",
+                  // On mobile, disable if not all results entered
+                  !allResultsEntered 
+                    ? "text-mist/40 cursor-not-allowed sm:text-mist sm:hover:text-snow sm:cursor-pointer"
+                    : "text-mist hover:text-snow"
+                )}
               >
                 <span className="text-xs uppercase tracking-wide hidden sm:inline">Next</span>
-                <span className="font-medium text-snow hidden sm:inline">
+                <span className={cn(
+                  "font-medium hidden sm:inline",
+                  allResultsEntered ? "text-snow" : "text-mist/40 sm:text-snow"
+                )}>
                   {isLastRound ? 'Results' : `Round ${roundNumber + 1}`}
                 </span>
                 <ArrowRight className="w-4 h-4" />
@@ -236,26 +262,27 @@ export const MatchRoundsPage = () => {
           className="rounds-page__matches-container bg-obsidian border border-storm rounded-xl overflow-hidden"
         >
           {/* Integrated Header - Round info, Timer, Standings */}
-          <div className="rounds-page__matches-header px-4 py-4 bg-slate/50 flex items-center justify-between">
-            <h1 className="rounds-page__round-title text-2xl font-bold text-snow">
-              Round {roundNumber} of {event.settings.totalRounds}
+          <div className="rounds-page__matches-header px-3 sm:px-4 py-3 sm:py-4 bg-slate/50 flex items-center justify-between">
+            <h1 className="rounds-page__round-title text-lg sm:text-2xl font-bold text-snow">
+              <span className="sm:hidden">Round {roundNumber}</span>
+              <span className="hidden sm:inline">Round {roundNumber} of {event.settings.totalRounds}</span>
             </h1>
             
-            <div className="rounds-page__header-actions flex items-center gap-3">
+            <div className="rounds-page__header-actions flex items-center gap-2 sm:gap-3">
               {/* Timer */}
               <Button
                 variant="secondary"
                 onClick={handleTimerToggle}
-                className="rounds-page__timer-btn"
+                className="rounds-page__timer-btn px-2 sm:px-3"
               >
                 <Clock className={cn("w-4 h-4", isRunning && "text-success animate-pulse")} />
                 <span className={cn(
-                  "rounds-page__timer-display font-mono",
+                  "rounds-page__timer-display font-mono text-sm sm:text-base",
                   isRunning ? "text-snow" : "text-mist"
                 )}>
                   {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
                 </span>
-                <span className="text-xs text-mist">
+                <span className="text-xs text-mist hidden sm:inline">
                   {isRunning ? 'Running' : 'Paused'}
                 </span>
               </Button>
@@ -264,10 +291,9 @@ export const MatchRoundsPage = () => {
               <Button
                 variant="secondary"
                 onClick={() => setShowStandings(true)}
-                className="rounds-page__standings-btn"
+                className="rounds-page__standings-btn px-2 sm:px-3"
               >
-                <BarChart3 className="w-4 h-4" />
-                Standings
+                <span className="text-sm">Standings</span>
               </Button>
             </div>
           </div>
@@ -317,10 +343,10 @@ export const MatchRoundsPage = () => {
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions - Hidden on mobile (navigate via header) */}
         <div 
           data-section="actions"
-          className="rounds-page__actions-bar mt-8 p-4 bg-obsidian border border-storm rounded-xl"
+          className="rounds-page__actions-bar hidden sm:block mt-8 p-4 bg-obsidian border border-storm rounded-xl"
         >
           <div className="rounds-page__actions-row flex items-center justify-between">
             <p className="rounds-page__actions-message text-mist">
@@ -353,6 +379,14 @@ export const MatchRoundsPage = () => {
         onClose={() => setShowStandings(false)}
         standings={standings}
         players={event.players}
+      />
+
+      {/* Options Drawer - Mobile only */}
+      <OptionsDrawer
+        isOpen={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        eventCode={event.eventCode}
+        eventLink={`${window.location.origin}/event/${compositeId}/round/${roundNumber}`}
       />
     </div>
   );

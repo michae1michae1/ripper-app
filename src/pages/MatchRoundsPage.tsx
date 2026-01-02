@@ -314,7 +314,7 @@ export const MatchRoundsPage = () => {
               <Button
                 variant="secondary"
                 onClick={handleTimerToggle}
-                className="rounds-page__timer-btn px-2 sm:px-3"
+                className="rounds-page__timer-btn px-2 sm:px-3 py-2"
               >
                 <Clock
                   className={cn(
@@ -340,9 +340,9 @@ export const MatchRoundsPage = () => {
               <Button
                 variant="secondary"
                 onClick={() => setShowStandings(true)}
-                className="rounds-page__standings-btn px-2 sm:px-3"
+                className="rounds-page__standings-btn px-2 sm:px-3 py-2"
               >
-                <span className="text-sm">Standings</span>
+                <span className="text-sm sm:text-base">Standings</span>
               </Button>
             </div>
           </div>

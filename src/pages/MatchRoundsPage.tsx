@@ -158,10 +158,17 @@ export const MatchRoundsPage = () => {
   const getPlayer = (playerId: string) =>
     event.players.find((p) => p.id === playerId);
 
-  const allResultsEntered =
-    currentRound?.matches.every(
-      (m) => m.result !== null || m.playerBId === null
-    ) ?? false;
+  const allMatchesFinal =
+    currentRound?.matches.every((m) => {
+      // Bye = always final
+      if (m.playerBId === null) return true;
+      // No result entered = not final
+      if (!m.result) return false;
+      // Draw = final
+      if (m.result.isDraw) return true;
+      // 3 games played = final
+      return m.result.playerAWins + m.result.playerBWins === 3;
+    }) ?? false;
 
   const waitingCount =
     currentRound?.matches.filter(
@@ -173,18 +180,17 @@ export const MatchRoundsPage = () => {
 
   // Status for navbar
   const getStatusColor = () => {
-    if (allResultsEntered) return "bg-success";
-    if (isRunning) return "bg-cyan-400";
-    return "bg-warning";
+    if (allMatchesFinal) return "bg-success"; // Ready
+    if (isRunning) return "bg-cyan-400"; // Playing
+    if (currentRound?.timerStartedAt) return "bg-danger"; // Paused
+    return "bg-warning"; // Waiting
   };
 
   const getStatusText = (mobile = false) => {
-    if (allResultsEntered) return mobile ? "Ready" : "Ready to Proceed";
-    if (waitingCount > 0)
-      return mobile
-        ? "Waiting"
-        : `Waiting for ${waitingCount} Result${waitingCount > 1 ? "s" : ""}`;
-    return mobile ? "Playing" : "In Progress";
+    if (allMatchesFinal) return mobile ? "Ready" : "Ready to Proceed";
+    if (isRunning) return "Playing";
+    if (currentRound?.timerStartedAt) return "Paused";
+    return mobile ? "Waiting" : "Waiting to Start";
   };
 
   return (
@@ -193,7 +199,7 @@ export const MatchRoundsPage = () => {
       data-event-id={event.id}
       data-round={roundNumber}
       data-total-rounds={event.settings.totalRounds}
-      data-all-entered={allResultsEntered || undefined}
+      data-all-entered={allMatchesFinal || undefined}
       className="rounds-page min-h-screen bg-midnight"
     >
       {/* Header */}
@@ -226,18 +232,29 @@ export const MatchRoundsPage = () => {
 
             {/* Center: Status badge */}
             <div
-              data-status={allResultsEntered ? "complete" : "waiting"}
+              data-status={allMatchesFinal ? "complete" : "waiting"}
               className="rounds-page__status-badge flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full"
             >
               <span
-                className={`rounds-page__status-indicator w-2 h-2 rounded-full ${getStatusColor()} ${
-                  !allResultsEntered && "animate-pulse"
-                }`}
+                className={cn(
+                  "rounds-page__status-indicator w-2 h-2 rounded-full",
+                  getStatusColor(),
+                  !allMatchesFinal && "animate-pulse"
+                )}
               />
               <span
-                className={`rounds-page__status-text text-sm uppercase tracking-widest font-semibold ${
-                  allResultsEntered ? "text-success" : "text-warning"
-                }`}
+                className={cn(
+                  "rounds-page__status-text text-sm uppercase tracking-widest font-semibold",
+                  allMatchesFinal && "text-success",
+                  !allMatchesFinal && isRunning && "text-cyan-400",
+                  !allMatchesFinal &&
+                    !isRunning &&
+                    currentRound?.timerStartedAt &&
+                    "text-danger",
+                  !allMatchesFinal &&
+                    !currentRound?.timerStartedAt &&
+                    "text-warning"
+                )}
               >
                 <span className="sm:hidden">{getStatusText(true)}</span>
                 <span className="hidden sm:inline">{getStatusText()}</span>
@@ -258,7 +275,7 @@ export const MatchRoundsPage = () => {
               <button
                 onClick={() => {
                   // On mobile, require all results before navigating
-                  if (!allResultsEntered && window.innerWidth < 640) return;
+                  if (!allMatchesFinal && window.innerWidth < 640) return;
                   if (isLastRound) {
                     navigate(`/event/${compositeId}/results`);
                   } else {
@@ -268,7 +285,7 @@ export const MatchRoundsPage = () => {
                 className={cn(
                   "rounds-page__next-link flex items-center gap-2 transition-colors",
                   // On mobile, disable if not all results entered
-                  !allResultsEntered
+                  !allMatchesFinal
                     ? "text-mist/40 cursor-not-allowed sm:text-mist sm:hover:text-snow sm:cursor-pointer"
                     : "text-mist hover:text-snow"
                 )}
@@ -279,9 +296,7 @@ export const MatchRoundsPage = () => {
                 <span
                   className={cn(
                     "font-medium hidden sm:inline",
-                    allResultsEntered
-                      ? "text-snow"
-                      : "text-mist/40 sm:text-snow"
+                    allMatchesFinal ? "text-snow" : "text-mist/40 sm:text-snow"
                   )}
                 >
                   {isLastRound ? "Results" : `Round ${roundNumber + 1}`}
@@ -441,7 +456,7 @@ export const MatchRoundsPage = () => {
         >
           <div className="rounds-page__actions-row flex items-center justify-between">
             <p className="rounds-page__actions-message text-mist">
-              {allResultsEntered
+              {allMatchesFinal
                 ? "All results have been entered. Ready to proceed."
                 : "All results must be entered to proceed."}
             </p>
@@ -456,7 +471,7 @@ export const MatchRoundsPage = () => {
               <Button
                 variant="primary"
                 onClick={handleFinalizeRound}
-                disabled={!allResultsEntered}
+                disabled={!allMatchesFinal}
                 className="rounds-page__finalize-btn"
               >
                 {isLastRound

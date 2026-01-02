@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Copy, Check, Sun, Moon, Monitor, Link as LinkIcon } from 'lucide-react';
+import { X, Copy, Check, Sun, Moon, Monitor, Link as LinkIcon, Lock } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 type Theme = 'light' | 'dark' | 'system';
@@ -9,6 +9,9 @@ interface OptionsDrawerProps {
   onClose: () => void;
   eventCode?: string;
   eventLink?: string;
+  eventId?: string;
+  onNavigateToAdmin?: () => void;
+  isMobile?: boolean;
 }
 
 const getStoredTheme = (): Theme => {
@@ -34,6 +37,9 @@ export const OptionsDrawer = ({
   onClose,
   eventCode,
   eventLink,
+  eventId,
+  onNavigateToAdmin,
+  isMobile = true,
 }: OptionsDrawerProps) => {
   const [theme, setTheme] = useState<Theme>(getStoredTheme);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -81,24 +87,35 @@ export const OptionsDrawer = ({
         onClick={onClose}
       />
 
-      {/* Drawer */}
+      {/* Drawer (mobile) or Modal (desktop) */}
       <div
         data-component="OptionsDrawer"
         data-open={isOpen || undefined}
+        data-mode={isMobile ? 'drawer' : 'modal'}
         className={cn(
-          'options-drawer fixed inset-x-0 bottom-0 z-50 bg-obsidian border-t border-storm rounded-t-2xl',
-          'transform transition-transform duration-300 ease-out',
-          isOpen ? 'translate-y-0' : 'translate-y-full'
+          'options-drawer fixed z-50 bg-obsidian border border-storm',
+          'transform transition-all duration-300 ease-out',
+          isMobile
+            ? 'inset-x-0 bottom-0 rounded-t-2xl'
+            : 'left-1/2 top-1/2 -translate-x-1/2 rounded-xl w-full max-w-md',
+          isMobile
+            ? isOpen ? 'translate-y-0' : 'translate-y-full'
+            : isOpen ? '-translate-y-1/2 opacity-100 scale-100' : '-translate-y-1/2 opacity-0 scale-95 pointer-events-none'
         )}
       >
-        {/* Handle */}
-        <div className="options-drawer__handle flex justify-center py-3">
-          <div className="w-10 h-1 bg-storm rounded-full" />
-        </div>
+        {/* Handle (mobile only) */}
+        {isMobile && (
+          <div className="options-drawer__handle flex justify-center py-3">
+            <div className="w-10 h-1 bg-storm rounded-full" />
+          </div>
+        )}
 
         {/* Header */}
-        <div className="options-drawer__header flex items-center justify-between px-4 pb-4 border-b border-storm">
-          <h3 className="options-drawer__title text-lg font-semibold text-snow">Options</h3>
+        <div className={cn(
+          'options-drawer__header flex items-center justify-between px-4 pb-4 border-b border-storm',
+          !isMobile && 'pt-4'
+        )}>
+          <h3 className="options-drawer__title text-lg font-semibold text-snow">Settings</h3>
           <button
             onClick={onClose}
             className="options-drawer__close p-2 text-mist hover:text-snow rounded-lg hover:bg-slate transition-colors"
@@ -198,6 +215,28 @@ export const OptionsDrawer = ({
                 ) : (
                   <Copy className="w-5 h-5 text-mist flex-shrink-0" />
                 )}
+              </button>
+            </div>
+          )}
+
+          {/* Event Admin Navigation */}
+          {eventId && onNavigateToAdmin && (
+            <div className="options-drawer__section">
+              <h4 className="options-drawer__section-title text-xs font-semibold text-mist uppercase tracking-wide mb-3">
+                Admin
+              </h4>
+              <button
+                onClick={() => {
+                  onNavigateToAdmin();
+                  onClose();
+                }}
+                className="options-drawer__admin-btn w-full flex items-center gap-3 bg-slate border border-storm rounded-lg px-4 py-3 hover:border-arcane/50 transition-colors group"
+              >
+                <Lock className="w-4 h-4 text-warning flex-shrink-0" />
+                <span className="text-sm text-silver flex-1 text-left group-hover:text-snow transition-colors">
+                  Event Setup
+                </span>
+                <span className="text-xs text-mist">Requires password</span>
               </button>
             </div>
           )}

@@ -693,6 +693,25 @@ export const useEventStore = create<EventStore>((set, get) => ({
           updatedAt: Date.now(),
         },
       });
+    } else if (event.currentPhase === 'rounds') {
+      // Find the current round and adjust its timer
+      const updatedRounds = event.rounds.map(round => {
+        if (round.timerStartedAt && !round.endedAt) {
+          return {
+            ...round,
+            timerDuration: Math.max(60, round.timerDuration + seconds),
+          };
+        }
+        return round;
+      });
+      
+      set({
+        event: {
+          ...event,
+          rounds: updatedRounds,
+          updatedAt: Date.now(),
+        },
+      });
     }
   },
 
@@ -723,6 +742,28 @@ export const useEventStore = create<EventStore>((set, get) => ({
             timerDuration: event.settings.deckbuildingMinutes * 60,
             isPaused: true,
           },
+          updatedAt: Date.now(),
+        },
+      });
+    } else if (event.currentPhase === 'rounds') {
+      // Reset the current round's timer (the round that hasn't ended yet)
+      const updatedRounds = event.rounds.map(round => {
+        if (!round.endedAt) {
+          return {
+            ...round,
+            timerStartedAt: null,
+            timerPausedAt: null,
+            timerDuration: event.settings.roundMinutes * 60,
+            isPaused: true,
+          };
+        }
+        return round;
+      });
+      
+      set({
+        event: {
+          ...event,
+          rounds: updatedRounds,
           updatedAt: Date.now(),
         },
       });

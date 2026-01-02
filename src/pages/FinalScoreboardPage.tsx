@@ -134,21 +134,13 @@ export const FinalScoreboardPage = () => {
               </span>
             </div>
 
-            {/* Right: Theme / Options */}
+            {/* Right: Options */}
             <div className="scoreboard-page__nav-right flex items-center gap-2">
-              {/* Desktop: Theme toggle */}
+              {/* Settings button - both mobile and desktop */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="scoreboard-page__theme-btn hidden sm:flex"
-              >
-                <Sun className="w-5 h-5" />
-              </Button>
-              {/* Mobile: Options drawer trigger */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="scoreboard-page__options-btn sm:hidden"
+                className="scoreboard-page__options-btn"
                 onClick={() => setOptionsOpen(true)}
               >
                 <Settings className="w-5 h-5" />
@@ -477,12 +469,17 @@ export const FinalScoreboardPage = () => {
         </div>
       </main>
 
-      {/* Options Drawer - Mobile only */}
+      {/* Options Drawer/Modal */}
       <OptionsDrawer
         isOpen={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         eventCode={event.eventCode}
         eventLink={`${window.location.origin}/event/${compositeId}/results`}
+        eventId={event.id}
+        onNavigateToAdmin={() => {
+          navigate(`/event/${compositeId}`);
+        }}
+        isMobile={typeof window !== 'undefined' && window.innerWidth < 640}
       />
     </div>
   );

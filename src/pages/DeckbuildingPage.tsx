@@ -15,6 +15,7 @@ export const DeckbuildingPage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [deckbuildingComplete, setDeckbuildingComplete] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -119,6 +120,24 @@ export const DeckbuildingPage = () => {
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
+  const handleToggleComplete = async () => {
+    if (!event) return;
+    
+    const newCompleteState = !deckbuildingComplete;
+    setDeckbuildingComplete(newCompleteState);
+    
+    // If marking as complete and timer is running, pause it
+    if (newCompleteState && isRunning) {
+      pauseTimer();
+      await updateEventSession(event.id, useEventStore.getState().event!);
+    }
+    // If returning to deckbuilding and timer is paused, resume it
+    else if (!newCompleteState && !isRunning && deckbuildingStarted) {
+      resumeTimer();
+      await updateEventSession(event.id, useEventStore.getState().event!);
+    }
+  };
+
   const handleAdvanceToRounds = async () => {
     if (!event) return;
     advanceToPhase('rounds');
@@ -163,6 +182,7 @@ export const DeckbuildingPage = () => {
   // Status for navbar badge
   const getStatusColor = () => {
     if (!deckbuildingStarted) return 'bg-warning';
+    if (deckbuildingComplete) return 'bg-success';
     if (isExpired) return 'bg-success';
     if (isRunning) return 'bg-cyan-400';
     return 'bg-danger';
@@ -170,6 +190,7 @@ export const DeckbuildingPage = () => {
 
   const getStatusText = (mobile = false) => {
     if (!deckbuildingStarted) return mobile ? 'Start' : 'Start Deckbuilding';
+    if (deckbuildingComplete) return mobile ? 'Done' : 'Complete';
     if (isExpired) return mobile ? 'Done' : 'Time Complete';
     if (isRunning) return mobile ? 'Building' : 'Building Decks';
     return 'Paused';
@@ -210,7 +231,7 @@ export const DeckbuildingPage = () => {
             {/* Center: Status badge - clickable to start deckbuilding */}
             <button
               onClick={!deckbuildingStarted ? handleStartDeckbuilding : undefined}
-              data-status={isExpired ? 'complete' : deckbuildingStarted ? (isRunning ? 'running' : 'paused') : 'pending'}
+              data-status={deckbuildingComplete ? 'complete' : isExpired ? 'complete' : deckbuildingStarted ? (isRunning ? 'running' : 'paused') : 'pending'}
               className={cn(
                 "deckbuilding-page__status-badge",
                 "flex items-center gap-2 absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full transition-all",
@@ -222,14 +243,15 @@ export const DeckbuildingPage = () => {
                 "deckbuilding-page__status-indicator w-2 h-2 rounded-full",
                 getStatusColor(),
                 !deckbuildingStarted && "animate-pulse",
-                isRunning && "animate-pulse"
+                isRunning && !deckbuildingComplete && "animate-pulse"
               )} />
               <span className={cn(
                 "deckbuilding-page__status-text text-sm uppercase tracking-widest font-semibold",
                 !deckbuildingStarted && "text-warning",
-                isExpired && "text-success",
-                deckbuildingStarted && !isExpired && isRunning && "text-cyan-400",
-                deckbuildingStarted && !isExpired && !isRunning && "text-danger"
+                deckbuildingComplete && "text-success",
+                isExpired && !deckbuildingComplete && "text-success",
+                deckbuildingStarted && !isExpired && !deckbuildingComplete && isRunning && "text-cyan-400",
+                deckbuildingStarted && !isExpired && !deckbuildingComplete && !isRunning && "text-danger"
               )}>
                 <span className="sm:hidden">{getStatusText(true)}</span>
                 <span className="hidden sm:inline">{getStatusText()}</span>
@@ -238,15 +260,11 @@ export const DeckbuildingPage = () => {
             
             {/* Right: Options + Next Round */}
             <div className="deckbuilding-page__nav-right flex items-center gap-4">
-              {/* Desktop: Theme toggle */}
-              <Button variant="ghost" size="icon" className="deckbuilding-page__theme-btn hidden sm:flex">
-                <Sun className="w-5 h-5" />
-              </Button>
-              {/* Mobile: Options drawer trigger */}
+              {/* Settings button - both mobile and desktop */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="deckbuilding-page__options-btn sm:hidden"
+                className="deckbuilding-page__options-btn"
                 onClick={() => setOptionsOpen(true)}
               >
                 <Settings className="w-5 h-5" />
@@ -312,24 +330,24 @@ export const DeckbuildingPage = () => {
         </div>
       </div>
 
-      {/* Main Content - Centered Timer */}
-      <main className="deckbuilding-page__main flex-1 flex flex-col items-center justify-center px-4 py-8">
-        {/* Timer Section - Same style as Draft page */}
+      {/* Main Content - Timer at Top */}
+      <main className="deckbuilding-page__main flex-1 flex flex-col items-center px-4 pt-8 sm:pt-12">
+        {/* Timer Section */}
         <div 
           data-section="timer-section"
-          className="deckbuilding-page__timer-section bg-obsidian rounded-xl p-8 shadow-lg shadow-black/20"
+          className="deckbuilding-page__timer-section bg-obsidian rounded-xl p-6 sm:p-8 shadow-lg shadow-black/20"
         >
-          <div className="deckbuilding-page__timer-area flex flex-col items-center">
-            <div className="deckbuilding-page__timer-controls flex items-center gap-6">
+          <div className="deckbuilding-page__timer-area flex flex-col items-center gap-6">
+            <div className="deckbuilding-page__timer-controls flex items-center gap-4 sm:gap-6">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleAdjust(-60)}
                 title="Remove 1 minute"
-                className="deckbuilding-page__timer-decrease text-mist hover:text-snow w-12 h-12"
+                className="deckbuilding-page__timer-decrease text-mist hover:text-snow w-10 h-10 sm:w-12 sm:h-12"
                 disabled={!deckbuildingStarted}
               >
-                <Minus className="w-6 h-6" />
+                <Minus className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
               
               <button
@@ -363,12 +381,27 @@ export const DeckbuildingPage = () => {
                 size="icon"
                 onClick={() => handleAdjust(60)}
                 title="Add 1 minute"
-                className="deckbuilding-page__timer-increase text-mist hover:text-snow w-12 h-12"
+                className="deckbuilding-page__timer-increase text-mist hover:text-snow w-10 h-10 sm:w-12 sm:h-12"
                 disabled={!deckbuildingStarted}
               >
-                <Plus className="w-6 h-6" />
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
             </div>
+
+            {/* Deckbuilding Complete Toggle Button */}
+            <button
+              onClick={handleToggleComplete}
+              disabled={!deckbuildingStarted}
+              data-complete={deckbuildingComplete || undefined}
+              className={cn(
+                "deckbuilding-page__complete-btn w-full max-w-md px-8 py-4 rounded-lg font-semibold text-lg transition-all",
+                !deckbuildingStarted && "opacity-50 cursor-not-allowed bg-slate text-mist",
+                deckbuildingStarted && !deckbuildingComplete && "bg-arcane hover:bg-arcane/80 text-snow cursor-pointer",
+                deckbuildingComplete && "bg-success hover:bg-success/80 text-midnight cursor-pointer"
+              )}
+            >
+              {deckbuildingComplete ? "Return to Deckbuilding" : "Mark Deckbuilding Complete"}
+            </button>
           </div>
         </div>
       </main>
@@ -383,12 +416,18 @@ export const DeckbuildingPage = () => {
         </div>
       </footer>
 
-      {/* Options Drawer - Mobile only */}
+      {/* Options Drawer/Modal */}
       <OptionsDrawer
         isOpen={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         eventCode={event.eventCode}
         eventLink={`${window.location.origin}/event/${compositeId}/deckbuilding`}
+        eventId={event.id}
+        onNavigateToAdmin={() => {
+          clearHostAuth();
+          navigate(`/event/${compositeId}`);
+        }}
+        isMobile={typeof window !== 'undefined' && window.innerWidth < 640}
       />
     </div>
   );

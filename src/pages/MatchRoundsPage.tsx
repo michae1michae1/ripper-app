@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  Sun,
   Clock,
   Home,
   Settings,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { Button, OptionsDrawer } from "@/components/ui";
 import { MatchCard, StandingsModal } from "@/components/rounds";
@@ -43,6 +44,7 @@ export const MatchRoundsPage = () => {
     startTimer,
     pauseTimer,
     resumeTimer,
+    adjustTimer,
     setLoading,
     setError,
     isLoading,
@@ -101,6 +103,12 @@ export const MatchRoundsPage = () => {
     } else {
       startTimer();
     }
+    await updateEventSession(event.id, useEventStore.getState().event!);
+  };
+
+  const handleAdjustTimer = async (seconds: number) => {
+    if (!event || !currentRound?.timerStartedAt) return;
+    adjustTimer(seconds);
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
@@ -238,19 +246,11 @@ export const MatchRoundsPage = () => {
 
             {/* Right: Options + Next */}
             <div className="rounds-page__nav-right flex items-center gap-4">
-              {/* Desktop: Theme toggle */}
+              {/* Settings button - both mobile and desktop */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounds-page__theme-btn hidden sm:flex"
-              >
-                <Sun className="w-5 h-5" />
-              </Button>
-              {/* Mobile: Options drawer trigger */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounds-page__options-btn sm:hidden"
+                className="rounds-page__options-btn"
                 onClick={() => setOptionsOpen(true)}
               >
                 <Settings className="w-5 h-5" />
@@ -310,31 +310,66 @@ export const MatchRoundsPage = () => {
             </h1>
 
             <div className="rounds-page__header-actions flex items-center gap-2 sm:gap-3">
-              {/* Timer */}
-              <Button
-                variant="secondary"
-                onClick={handleTimerToggle}
-                className="rounds-page__timer-btn px-2 sm:px-3 py-2"
-              >
-                <Clock
+              {/* Timer with integrated controls */}
+              <div className="rounds-page__timer-container flex items-center gap-0.5 bg-slate rounded-lg border border-storm p-1">
+                {/* Minus button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustTimer(-60);
+                  }}
+                  disabled={!currentRound?.timerStartedAt}
                   className={cn(
-                    "w-4 h-4",
-                    isRunning && "text-success animate-pulse"
+                    "rounds-page__timer-decrease w-5 h-5 flex items-center justify-center rounded transition-colors",
+                    currentRound?.timerStartedAt
+                      ? "text-mist hover:text-snow hover:bg-storm"
+                      : "text-mist/30 cursor-not-allowed"
                   )}
-                />
-                <span
-                  className={cn(
-                    "rounds-page__timer-display font-mono text-sm sm:text-base",
-                    isRunning ? "text-snow" : "text-mist"
-                  )}
+                  title="Remove 1 minute"
                 >
-                  {String(minutes).padStart(2, "0")}:
-                  {String(seconds).padStart(2, "0")}
-                </span>
-                <span className="text-xs text-mist hidden sm:inline">
-                  {isRunning ? "Running" : "Paused"}
-                </span>
-              </Button>
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Timer Display (clickable to pause/resume) */}
+                <button
+                  onClick={handleTimerToggle}
+                  className="rounds-page__timer-display-btn flex items-center gap-1.5 px-2 py-1 rounded hover:bg-storm transition-colors"
+                >
+                  <Clock
+                    className={cn(
+                      "w-4 h-4",
+                      isRunning ? "text-success animate-pulse" : "text-red-500"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "rounds-page__timer-display font-mono text-sm sm:text-base font-medium",
+                      isRunning ? "text-snow" : "text-mist"
+                    )}
+                  >
+                    {String(minutes).padStart(2, "0")}:
+                    {String(seconds).padStart(2, "0")}
+                  </span>
+                </button>
+
+                {/* Plus button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAdjustTimer(60);
+                  }}
+                  disabled={!currentRound?.timerStartedAt}
+                  className={cn(
+                    "rounds-page__timer-increase w-5 h-5 flex items-center justify-center rounded transition-colors",
+                    currentRound?.timerStartedAt
+                      ? "text-mist hover:text-snow hover:bg-storm"
+                      : "text-mist/30 cursor-not-allowed"
+                  )}
+                  title="Add 1 minute"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
               {/* Standings */}
               <Button
@@ -442,12 +477,17 @@ export const MatchRoundsPage = () => {
         players={event.players}
       />
 
-      {/* Options Drawer - Mobile only */}
+      {/* Options Drawer/Modal */}
       <OptionsDrawer
         isOpen={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         eventCode={event.eventCode}
         eventLink={`${window.location.origin}/event/${compositeId}/round/${roundNumber}`}
+        eventId={event.id}
+        onNavigateToAdmin={() => {
+          navigate(`/event/${compositeId}`);
+        }}
+        isMobile={typeof window !== "undefined" && window.innerWidth < 640}
       />
     </div>
   );

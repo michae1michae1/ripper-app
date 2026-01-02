@@ -253,15 +253,11 @@ export const DraftPhasePage = () => {
             
             {/* Right: Options + Next Deckbuilding */}
             <div className="draft-page__nav-right flex items-center gap-4">
-              {/* Desktop: Theme toggle */}
-              <Button variant="ghost" size="icon" className="draft-page__theme-btn hidden sm:flex">
-                <Sun className="w-5 h-5" />
-              </Button>
-              {/* Mobile: Options drawer trigger */}
+              {/* Settings button - both mobile and desktop */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="draft-page__options-btn sm:hidden"
+                className="draft-page__options-btn"
                 onClick={() => setOptionsOpen(true)}
               >
                 <Settings className="w-5 h-5" />
@@ -589,12 +585,15 @@ export const DraftPhasePage = () => {
         </div>
       </main>
 
-      {/* Options Drawer - Mobile only */}
+      {/* Options Drawer/Modal */}
       <OptionsDrawer
         isOpen={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         eventCode={event.eventCode}
         eventLink={`${window.location.origin}/event/${compositeId}/draft`}
+        eventId={event.id}
+        onNavigateToAdmin={handleGoToAdmin}
+        isMobile={typeof window !== 'undefined' && window.innerWidth < 640}
       />
     </div>
   );

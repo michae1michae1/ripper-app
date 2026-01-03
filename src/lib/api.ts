@@ -1,4 +1,4 @@
-import type { EventSession } from '@/types/event';
+import type { EventSession, MatchResult } from '@/types/event';
 
 const API_BASE = '/api';
 const LOCAL_STORAGE_PREFIX = 'ripper_event:';
@@ -179,4 +179,101 @@ export async function getEventByCode(
 export async function checkCodeAvailable(code: string): Promise<boolean> {
   const result = await getEventByCode(code);
   return !result.data; // Available if no event found with this code
+}
+
+// Match result reporting response
+interface MatchReportResponse {
+  alreadyReported: boolean;
+  result: MatchResult;
+  reportedBy?: string;
+  reportedAt?: number;
+}
+
+/**
+ * Report a match result atomically
+ * 
+ * This endpoint handles race conditions when both players try to report
+ * the same match result simultaneously. Only the first submission wins.
+ */
+export async function reportMatchResult(
+  eventId: string,
+  matchId: string,
+  result: MatchResult,
+  reportedBy: string
+): Promise<ApiResponse<MatchReportResponse>> {
+  try {
+    const response = await fetch(`${API_BASE}/event/${eventId}/match/${matchId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result, reportedBy }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to report match result');
+    }
+
+    const data = await response.json();
+    return { 
+      data: {
+        alreadyReported: data.alreadyReported,
+        result: data.result,
+        reportedBy: data.reportedBy,
+        reportedAt: data.reportedAt,
+      }
+    };
+  } catch (err) {
+    // Fallback to localStorage in local development
+    if (isLocalDev) {
+      console.warn('[Dev Mode] API unavailable, using localStorage fallback for match result');
+      
+      const localEvent = getFromLocalStorage(eventId);
+      if (!localEvent) {
+        return { error: 'Event not found (local)' };
+      }
+
+      // Find and update the match
+      for (const round of localEvent.rounds) {
+        for (let i = 0; i < round.matches.length; i++) {
+          if (round.matches[i].id === matchId) {
+            // Check if already reported
+            if (round.matches[i].result !== null) {
+              return {
+                data: {
+                  alreadyReported: true,
+                  result: round.matches[i].result!,
+                  reportedBy: round.matches[i].reportedBy,
+                  reportedAt: round.matches[i].reportedAt,
+                }
+              };
+            }
+
+            // Update the match
+            const now = Date.now();
+            round.matches[i] = {
+              ...round.matches[i],
+              result,
+              reportedBy,
+              reportedAt: now,
+            };
+            localEvent.updatedAt = now;
+            saveToLocalStorage(eventId, localEvent);
+
+            return {
+              data: {
+                alreadyReported: false,
+                result,
+                reportedBy,
+                reportedAt: now,
+              }
+            };
+          }
+        }
+      }
+
+      return { error: 'Match not found (local)' };
+    }
+
+    return { error: err instanceof Error ? err.message : 'Network error. Please try again.' };
+  }
 }

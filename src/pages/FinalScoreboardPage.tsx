@@ -8,10 +8,12 @@ import {
   EditablePlayerName,
   OptionsDrawer,
 } from "@/components/ui";
+import { EventSequencePanel } from "@/components/admin";
 import { useEventStore } from "@/lib/store";
 import { calculateStandings } from "@/lib/swiss";
 import { getEventSession } from "@/lib/api";
 import { parseCompositeId, createCompositeId } from "@/lib/generateId";
+import { FULL_SEQUENCE } from "@/lib/sequenceGuards";
 import { MANA_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 import type { ManaColor } from "@/types/event";
@@ -460,6 +462,13 @@ export const FinalScoreboardPage = () => {
             © {new Date().getFullYear()} Ripper Limit. Built for the community.
           </p>
         </div>
+
+        {/* Event Sequence Panel - Full sequence view for completed events */}
+        <EventSequencePanel
+          event={event}
+          sequences={FULL_SEQUENCE}
+          isMasterView={true}
+        />
       </main>
 
       {/* Options Drawer/Modal */}

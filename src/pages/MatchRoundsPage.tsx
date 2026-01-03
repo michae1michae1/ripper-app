@@ -10,14 +10,16 @@ import {
   Minus,
 } from "lucide-react";
 import { Button, OptionsDrawer } from "@/components/ui";
+import { EventSequencePanel, StateWarningBanner } from "@/components/admin";
 import { MatchCard, StandingsModal } from "@/components/rounds";
 import { useEventStore } from "@/lib/store";
 import { useTimerMinutes } from "@/hooks/useTimer";
 import { calculateStandings } from "@/lib/swiss";
 import { getEventSession, updateEventSession } from "@/lib/api";
 import { parseCompositeId, createCompositeId } from "@/lib/generateId";
+import { ROUNDS_SEQUENCES } from "@/lib/sequenceGuards";
 import { cn } from "@/lib/cn";
-import type { MatchResult } from "@/types/event";
+import type { MatchResult, EventStage } from "@/types/event";
 
 export const MatchRoundsPage = () => {
   const navigate = useNavigate();
@@ -79,13 +81,7 @@ export const MatchRoundsPage = () => {
     }
   }, [eventId, event, loadEvent, setLoading, setError, navigate]);
 
-  // Generate pairings if needed
-  useEffect(() => {
-    if (event && !currentRound && event.currentPhase === "rounds") {
-      generatePairings(roundNumber);
-      updateEventSession(event.id, useEventStore.getState().event!);
-    }
-  }, [event, currentRound, roundNumber, generatePairings]);
+  // NOTE: Auto-generate pairings was removed - admin must sync to a round state first
 
   const handleUpdateResult = async (matchId: string, result: MatchResult) => {
     if (!event) return;
@@ -157,6 +153,20 @@ export const MatchRoundsPage = () => {
   const standings = calculateStandings(event.players, event.rounds);
   const getPlayer = (playerId: string) =>
     event.players.find((p) => p.id === playerId);
+    
+  // Determine if viewing state is out of sync with actual event state
+  const requiredStage: EventStage = `round:${roundNumber}_paused`;
+  
+  // Check if we need to show warning banner
+  // Show warning if:
+  // 1. The round we're viewing doesn't exist yet (need to sync to create it)
+  // 2. The event's current round doesn't match what we're viewing
+  const isRoundMissing = !currentRound;
+  const isViewingDifferentRound = event.currentRound !== roundNumber;
+  const isOutOfSync = isRoundMissing || (isViewingDifferentRound && event.currentPhase === 'rounds');
+  
+  // Controls are disabled when out of sync
+  const controlsDisabled = isOutOfSync;
 
   const allMatchesFinal =
     currentRound?.matches.every((m) => {
@@ -310,10 +320,22 @@ export const MatchRoundsPage = () => {
 
       {/* Main Content */}
       <main className="rounds-page__main max-w-4xl mx-auto px-4 py-8">
+        {/* Warning Banner - Show when viewing a round that doesn't match current state */}
+        {isOutOfSync && (
+          <StateWarningBanner
+            event={event}
+            requiredStage={requiredStage}
+          />
+        )}
+        
         {/* Matches */}
         <div
           data-section="matches"
-          className="rounds-page__matches-container bg-obsidian border border-storm rounded-xl overflow-hidden"
+          data-disabled={controlsDisabled || undefined}
+          className={cn(
+            "rounds-page__matches-container bg-obsidian border border-storm rounded-xl overflow-hidden",
+            controlsDisabled && "opacity-60 pointer-events-none"
+          )}
         >
           {/* Integrated Header - Round info, Timer, Standings */}
           <div className="rounds-page__matches-header px-3 sm:px-4 py-3 sm:py-4 bg-slate/50 flex items-center justify-between">
@@ -333,10 +355,10 @@ export const MatchRoundsPage = () => {
                     e.stopPropagation();
                     handleAdjustTimer(-60);
                   }}
-                  disabled={!currentRound?.timerStartedAt}
+                  disabled={controlsDisabled || !currentRound?.timerStartedAt}
                   className={cn(
                     "rounds-page__timer-decrease w-5 h-5 flex items-center justify-center rounded transition-colors",
-                    currentRound?.timerStartedAt
+                    !controlsDisabled && currentRound?.timerStartedAt
                       ? "text-mist hover:text-snow hover:bg-storm"
                       : "text-mist/30 cursor-not-allowed"
                   )}
@@ -348,7 +370,11 @@ export const MatchRoundsPage = () => {
                 {/* Timer Display (clickable to pause/resume) */}
                 <button
                   onClick={handleTimerToggle}
-                  className="rounds-page__timer-display-btn flex items-center gap-1.5 px-2 py-1 rounded hover:bg-storm transition-colors"
+                  disabled={controlsDisabled}
+                  className={cn(
+                    "rounds-page__timer-display-btn flex items-center gap-1.5 px-2 py-1 rounded transition-colors",
+                    !controlsDisabled && "hover:bg-storm"
+                  )}
                 >
                   <Clock
                     className={cn(
@@ -373,10 +399,10 @@ export const MatchRoundsPage = () => {
                     e.stopPropagation();
                     handleAdjustTimer(60);
                   }}
-                  disabled={!currentRound?.timerStartedAt}
+                  disabled={controlsDisabled || !currentRound?.timerStartedAt}
                   className={cn(
                     "rounds-page__timer-increase w-5 h-5 flex items-center justify-center rounded transition-colors",
-                    currentRound?.timerStartedAt
+                    !controlsDisabled && currentRound?.timerStartedAt
                       ? "text-mist hover:text-snow hover:bg-storm"
                       : "text-mist/30 cursor-not-allowed"
                   )}
@@ -452,18 +478,24 @@ export const MatchRoundsPage = () => {
         {/* Footer Actions - Hidden on mobile (navigate via header) */}
         <div
           data-section="actions"
-          className="rounds-page__actions-bar hidden sm:block mt-8 p-4 bg-obsidian border border-storm rounded-xl"
+          className={cn(
+            "rounds-page__actions-bar hidden sm:block mt-8 p-4 bg-obsidian border border-storm rounded-xl",
+            controlsDisabled && "opacity-60"
+          )}
         >
           <div className="rounds-page__actions-row flex items-center justify-between">
             <p className="rounds-page__actions-message text-mist">
-              {allMatchesFinal
-                ? "All results have been entered. Ready to proceed."
-                : "All results must be entered to proceed."}
+              {controlsDisabled
+                ? "Sync event state to enable controls for this round."
+                : allMatchesFinal
+                  ? "All results have been entered. Ready to proceed."
+                  : "All results must be entered to proceed."}
             </p>
             <div className="rounds-page__actions-buttons flex items-center gap-3">
               <Button
                 variant="secondary"
                 onClick={handleSaveAndContinue}
+                disabled={controlsDisabled}
                 className="rounds-page__save-btn"
               >
                 Save & Continue Later
@@ -471,7 +503,7 @@ export const MatchRoundsPage = () => {
               <Button
                 variant="primary"
                 onClick={handleFinalizeRound}
-                disabled={!allMatchesFinal}
+                disabled={controlsDisabled || !allMatchesFinal}
                 className="rounds-page__finalize-btn"
               >
                 {isLastRound
@@ -482,6 +514,12 @@ export const MatchRoundsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Event Sequence Panel - Round sequences */}
+        <EventSequencePanel
+          event={event}
+          sequences={ROUNDS_SEQUENCES}
+        />
       </main>
 
       {/* Standings Modal */}

@@ -73,23 +73,8 @@ export const HomePage = () => {
   const navigateToEventPhase = (event: { id: string; eventCode: string; currentPhase: string; currentRound?: number }) => {
     const compositeId = `${event.eventCode}-${event.id}`;
     
-    switch (event.currentPhase) {
-      case 'drafting':
-        navigate(`/event/${compositeId}/draft`);
-        break;
-      case 'deckbuilding':
-        navigate(`/event/${compositeId}/deckbuilding`);
-        break;
-      case 'rounds':
-        navigate(`/event/${compositeId}/round/${event.currentRound || 1}`);
-        break;
-      case 'complete':
-        navigate(`/event/${compositeId}/results`);
-        break;
-      default:
-        // Setup phase - requires admin access
-        navigate(`/event/${compositeId}`);
-    }
+    // Always navigate to player view - it handles all phases automatically
+    navigate(`/event/${compositeId}/player`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

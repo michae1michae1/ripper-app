@@ -4,6 +4,7 @@ import type {
   EventType, 
   Player, 
   EventPhase,
+  EventStage,
   DraftState,
   DraftLogEntry,
   DraftLogType,
@@ -14,10 +15,93 @@ import type {
 import { createEventId, createEventCode, createPlayerId, createMatchId } from './generateId';
 import { DEFAULT_SETTINGS, SEALED_DECKBUILDING_MINUTES, PACK_PASS_DIRECTION } from './constants';
 
+/**
+ * Derives the granular EventStage from an EventSession
+ * Used for player view to know exactly what to display
+ */
+export function getCurrentStage(event: EventSession | null): EventStage | null {
+  if (!event) return null;
+
+  switch (event.currentPhase) {
+    case 'setup':
+      return 'setup:configuring';
+
+    case 'drafting': {
+      if (!event.draftState) return 'draft:pack1_paused';
+      
+      if (event.draftState.isComplete) {
+        return 'draft:complete';
+      }
+      
+      const pack = event.draftState.currentPack;
+      const isPaused = event.draftState.isPaused;
+      
+      if (pack === 1) return isPaused ? 'draft:pack1_paused' : 'draft:pack1_active';
+      if (pack === 2) return isPaused ? 'draft:pack2_paused' : 'draft:pack2_active';
+      return isPaused ? 'draft:pack3_paused' : 'draft:pack3_active';
+    }
+
+    case 'deckbuilding': {
+      if (!event.deckbuildingState) return 'deckbuilding:paused';
+      
+      // Check if explicitly marked complete
+      if (event.deckbuildingState.isComplete) {
+        return 'deckbuilding:complete';
+      }
+      
+      // Check if timer has expired
+      const { timerStartedAt, timerPausedAt, timerDuration, isPaused } = event.deckbuildingState;
+      
+      if (timerStartedAt) {
+        const elapsed = isPaused && timerPausedAt
+          ? (timerPausedAt - timerStartedAt) / 1000
+          : (Date.now() - timerStartedAt) / 1000;
+        
+        if (elapsed >= timerDuration) {
+          return 'deckbuilding:complete';
+        }
+      }
+      
+      return isPaused ? 'deckbuilding:paused' : 'deckbuilding:active';
+    }
+
+    case 'rounds': {
+      const currentRound = event.rounds.find(r => r.roundNumber === event.currentRound);
+      if (!currentRound) {
+        return `round:${event.currentRound}_paused`;
+      }
+      
+      // Check if all matches in this round have results (round complete)
+      const allMatchesComplete = currentRound.matches.every(m => {
+        // Bye matches are always complete
+        if (m.playerBId === null) return true;
+        return m.result !== null;
+      });
+      
+      if (allMatchesComplete) {
+        return `round:${event.currentRound}_complete`;
+      }
+      
+      return currentRound.isPaused 
+        ? `round:${event.currentRound}_paused`
+        : `round:${event.currentRound}_active`;
+    }
+
+    case 'complete':
+      return 'complete:final';
+
+    default:
+      return 'setup:configuring';
+  }
+}
+
 interface EventStore {
   event: EventSession | null;
   isLoading: boolean;
   error: string | null;
+  
+  // Pending stage for admin selection (not yet synced)
+  pendingStage: EventStage | null;
   
   // Event lifecycle
   createEvent: (type: EventType, hostName: string) => EventSession;
@@ -37,6 +121,12 @@ interface EventStore {
   // Phase transitions
   startEvent: () => void;
   advanceToPhase: (phase: EventPhase) => void;
+  syncToStage: (targetStage: EventStage) => void;
+  
+  // Pending stage management (admin selects a state, but doesn't sync yet)
+  setPendingStage: (stage: EventStage | null) => void;
+  commitPendingStage: () => void;
+  clearPendingStage: () => void;
   
   // Draft controls
   nextPack: () => void;
@@ -50,6 +140,9 @@ interface EventStore {
   resumeTimer: () => void;
   adjustTimer: (seconds: number) => void;
   resetTimer: () => void;
+  
+  // Deckbuilding controls
+  markDeckbuildingComplete: (isComplete: boolean) => void;
   
   // Round management
   generatePairings: (roundNumber: number) => void;
@@ -102,6 +195,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
   event: null,
   isLoading: false,
   error: null,
+  pendingStage: null,
 
   createEvent: (type, hostName) => {
     const event: EventSession = {
@@ -300,6 +394,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
           timerPausedAt: null,
           timerDuration: event.settings.deckbuildingMinutes * 60,
           isPaused: true,
+          isComplete: false,
         } : null,
         updatedAt: Date.now(),
       },
@@ -321,6 +416,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
         timerPausedAt: null,
         timerDuration: event.settings.deckbuildingMinutes * 60,
         isPaused: true,
+        isComplete: false,
       };
     }
     
@@ -328,6 +424,131 @@ export const useEventStore = create<EventStore>((set, get) => ({
       updates.currentRound = 1;
     }
     
+    set({ event: { ...event, ...updates } });
+  },
+
+  syncToStage: (targetStage) => {
+    const { event } = get();
+    if (!event) return;
+
+    const now = Date.now();
+    const updates: Partial<EventSession> = {
+      updatedAt: now,
+    };
+
+    // Parse the target stage
+    const [phaseGroup, stateInfo] = targetStage.split(':');
+
+    // Set the current phase based on the target stage
+    switch (phaseGroup) {
+      case 'setup':
+        updates.currentPhase = 'setup';
+        break;
+
+      case 'draft': {
+        updates.currentPhase = 'drafting';
+        
+        // Parse pack and state info (e.g., "pack1_active", "complete")
+        if (stateInfo === 'complete') {
+          // Mark draft as complete
+          updates.draftState = {
+            ...(event.draftState || {
+              currentPack: 3,
+              passDirection: 'left',
+              timerStartedAt: null,
+              timerPausedAt: null,
+              timerDuration: DEFAULT_SETTINGS.draftPickSeconds,
+              packStartedAt: null,
+              eventLog: [],
+            }),
+            currentPack: 3,
+            isComplete: true,
+            isPaused: true,
+          } as DraftState;
+        } else {
+          // Parse pack number and paused/active state
+          const packMatch = stateInfo.match(/pack(\d)_(active|paused)/);
+          if (packMatch) {
+            const packNum = parseInt(packMatch[1], 10) as 1 | 2 | 3;
+            const isPaused = packMatch[2] === 'paused';
+            
+            updates.draftState = {
+              currentPack: packNum,
+              passDirection: PACK_PASS_DIRECTION[packNum],
+              timerStartedAt: isPaused ? null : (event.draftState?.timerStartedAt || now),
+              timerPausedAt: isPaused ? now : null,
+              timerDuration: event.draftState?.timerDuration || DEFAULT_SETTINGS.draftPickSeconds,
+              isPaused,
+              isComplete: false,
+              packStartedAt: event.draftState?.packStartedAt || (isPaused ? null : now),
+              eventLog: event.draftState?.eventLog || [],
+            };
+          }
+        }
+        break;
+      }
+
+      case 'deckbuilding': {
+        updates.currentPhase = 'deckbuilding';
+        
+        const isPaused = stateInfo === 'paused';
+        const isComplete = stateInfo === 'complete';
+        const isActive = stateInfo === 'active';
+        
+        updates.deckbuildingState = {
+          timerStartedAt: isActive ? (event.deckbuildingState?.timerStartedAt || now) : event.deckbuildingState?.timerStartedAt || null,
+          timerPausedAt: isPaused || isComplete ? (event.deckbuildingState?.timerPausedAt || now) : null,
+          timerDuration: event.deckbuildingState?.timerDuration || event.settings.deckbuildingMinutes * 60,
+          isPaused: isPaused || isComplete,
+          isComplete,
+        };
+        break;
+      }
+
+      case 'round': {
+        updates.currentPhase = 'rounds';
+        
+        // Parse round number and state (e.g., "1_active", "2_paused", "1_complete")
+        const roundMatch = stateInfo.match(/(\d+)_(active|paused|complete)/);
+        if (roundMatch) {
+          const roundNum = parseInt(roundMatch[1], 10);
+          const state = roundMatch[2];
+          const isPaused = state === 'paused' || state === 'complete';
+          const isComplete = state === 'complete';
+          
+          updates.currentRound = roundNum;
+          
+          // Pause any running timers on OTHER rounds when switching rounds
+          updates.rounds = event.rounds.map(r => {
+            if (r.roundNumber === roundNum) {
+              // This is the target round
+              return {
+                ...r,
+                isPaused,
+                isComplete: isComplete || r.isComplete,
+                timerStartedAt: isPaused ? r.timerStartedAt : (r.timerStartedAt || now),
+                timerPausedAt: isPaused ? (r.timerPausedAt || now) : null,
+              };
+            } else if (r.timerStartedAt && !r.isPaused) {
+              // Pause timers on other rounds
+              return {
+                ...r,
+                isPaused: true,
+                timerPausedAt: now,
+              };
+            }
+            return r;
+          });
+          // If round doesn't exist, generatePairings will be called separately
+        }
+        break;
+      }
+
+      case 'complete':
+        updates.currentPhase = 'complete';
+        break;
+    }
+
     set({ event: { ...event, ...updates } });
   },
 
@@ -741,6 +962,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
             timerPausedAt: null,
             timerDuration: event.settings.deckbuildingMinutes * 60,
             isPaused: true,
+            isComplete: false,
           },
           updatedAt: Date.now(),
         },
@@ -768,6 +990,27 @@ export const useEventStore = create<EventStore>((set, get) => ({
         },
       });
     }
+  },
+
+  markDeckbuildingComplete: (isComplete) => {
+    const { event } = get();
+    if (!event?.deckbuildingState) return;
+    
+    const now = Date.now();
+    
+    set({
+      event: {
+        ...event,
+        deckbuildingState: {
+          ...event.deckbuildingState,
+          isComplete,
+          // If marking complete, pause the timer and record the pause time
+          isPaused: isComplete ? true : event.deckbuildingState.isPaused,
+          timerPausedAt: isComplete ? now : event.deckbuildingState.timerPausedAt,
+        },
+        updatedAt: now,
+      },
+    });
   },
 
   generatePairings: (roundNumber) => {
@@ -856,5 +1099,18 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
+  
+  // Pending stage management
+  setPendingStage: (stage) => set({ pendingStage: stage }),
+  
+  clearPendingStage: () => set({ pendingStage: null }),
+  
+  commitPendingStage: () => {
+    const { pendingStage, syncToStage } = get();
+    if (pendingStage) {
+      syncToStage(pendingStage);
+      set({ pendingStage: null });
+    }
+  },
 }));
 

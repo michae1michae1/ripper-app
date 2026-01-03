@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { Button, PasswordKeypad, isHostAuthenticated } from "@/components/ui";
 import { EventTypeSelector, SetSelector, PlayerList } from "@/components/event";
+import { EventSequencePanel } from "@/components/admin";
 import { useEventStore } from "@/lib/store";
+import { FULL_SEQUENCE } from "@/lib/sequenceGuards";
 import {
   createEventSession,
   getEventSession,
@@ -168,6 +170,30 @@ export const EventSetupPage = () => {
         ? `/event/${compositeId}/draft`
         : `/event/${compositeId}/deckbuilding`;
     navigate(nextPath);
+  };
+
+  // Resume an already-started event - navigate to current phase
+  const handleResumeEvent = () => {
+    if (!event) return;
+    const compositeId = getCompositeId();
+    
+    switch (event.currentPhase) {
+      case 'drafting':
+        navigate(`/event/${compositeId}/draft`);
+        break;
+      case 'deckbuilding':
+        navigate(`/event/${compositeId}/deckbuilding`);
+        break;
+      case 'rounds':
+        navigate(`/event/${compositeId}/round/${event.currentRound}`);
+        break;
+      case 'complete':
+        navigate(`/event/${compositeId}/results`);
+        break;
+      default:
+        // Still in setup, do nothing
+        break;
+    }
   };
 
   const handleResetEvent = async () => {
@@ -479,6 +505,13 @@ export const EventSetupPage = () => {
               onRemovePlayer={handleRemovePlayer}
               onRandomize={handleRandomize}
             />
+
+            {/* Event Sequence Panel - Master View showing all sequences */}
+            <EventSequencePanel
+              event={event}
+              sequences={FULL_SEQUENCE}
+              isMasterView={true}
+            />
           </div>
         )}
       </main>
@@ -488,26 +521,52 @@ export const EventSetupPage = () => {
         <footer className="event-setup-page__footer fixed bottom-0 left-0 right-0 border-t border-storm bg-obsidian/95 backdrop-blur">
           <div className="event-setup-page__footer-container max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="event-setup-page__footer-info">
-              <p className="event-setup-page__footer-ready text-snow font-medium">
-                Ready to start?
-              </p>
-              <p className="event-setup-page__footer-hint text-sm text-mist">
-                Create new {event.type} instance.
-              </p>
+              {hasProgress ? (
+                <>
+                  <p className="event-setup-page__footer-ready text-snow font-medium">
+                    Event in progress
+                  </p>
+                  <p className="event-setup-page__footer-hint text-sm text-mist">
+                    Currently in {event.currentPhase} phase
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="event-setup-page__footer-ready text-snow font-medium">
+                    Ready to start?
+                  </p>
+                  <p className="event-setup-page__footer-hint text-sm text-mist">
+                    Create new {event.type} instance.
+                  </p>
+                </>
+              )}
             </div>
             <div className="event-setup-page__footer-actions flex items-center gap-3">
-              <span className="event-setup-page__keyboard-hint text-xs text-mist hidden sm:block">
-                ⌘ + Enter to start
-              </span>
-              <Button
-                onClick={handleStartEvent}
-                disabled={!canStart}
-                size="lg"
-                className="event-setup-page__start-btn"
-              >
-                Start Event
-                <ArrowRight className="w-5 h-5" />
-              </Button>
+              {hasProgress ? (
+                <Button
+                  onClick={handleResumeEvent}
+                  size="lg"
+                  className="event-setup-page__resume-btn"
+                >
+                  Resume Event
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+              ) : (
+                <>
+                  <span className="event-setup-page__keyboard-hint text-xs text-mist hidden sm:block">
+                    ⌘ + Enter to start
+                  </span>
+                  <Button
+                    onClick={handleStartEvent}
+                    disabled={!canStart}
+                    size="lg"
+                    className="event-setup-page__start-btn"
+                  >
+                    Start Event
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </footer>

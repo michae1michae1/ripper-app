@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Minus, Plus, Lock, Link as LinkIcon, Copy, Check, Home, Play, Pause, Clock, CheckCircle2, Settings, Users } from 'lucide-react';
 import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
+import { EventSequencePanel } from '@/components/admin';
 import { TimerDisplay } from '@/components/timer';
 import { PodSeating } from '@/components/draft';
 import { useEventStore } from '@/lib/store';
+import { DRAFT_SEQUENCES } from '@/lib/sequenceGuards';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { getEventSession, updateEventSession } from '@/lib/api';
 import { parseCompositeId, createCompositeId } from '@/lib/generateId';
@@ -29,11 +31,12 @@ export const DraftPhasePage = () => {
     resumeTimer,
     adjustTimer,
     setCurrentPack,
-    markDraftComplete,
     advanceToPhase,
     setLoading,
     setError,
     isLoading,
+    pendingStage,
+    setPendingStage,
   } = useEventStore();
   
   const timerState = event?.draftState ? {
@@ -141,10 +144,15 @@ export const DraftPhasePage = () => {
     }
   };
 
-  const handleMarkDraftComplete = async () => {
+  // Clicking the checkmark now sets pendingStage instead of immediately syncing
+  const handleMarkDraftComplete = () => {
     if (!event || !draftStarted || draftState.currentPack !== 3) return;
-    markDraftComplete();
-    await updateEventSession(event.id, useEventStore.getState().event!);
+    // Toggle pending state - if already pending, clear it
+    if (pendingStage === 'draft:complete') {
+      setPendingStage(null);
+    } else {
+      setPendingStage('draft:complete');
+    }
   };
 
   const handleMoveToDeckbuilding = async () => {
@@ -430,20 +438,39 @@ export const DraftPhasePage = () => {
             </button>
 
             {/* Draft Complete Button - Right of Pack 3 */}
-            <button
-              onClick={handleMarkDraftComplete}
-              disabled={!draftStarted || !isOnPack3 || isDraftComplete}
-              data-complete={isDraftComplete || undefined}
-              className={cn(
-                "draft-page__complete-btn p-2 rounded-full transition-all ml-4",
-                isDraftComplete && "bg-success/20 text-success",
-                !isDraftComplete && isOnPack3 && draftStarted && "bg-slate text-mist hover:text-snow hover:bg-slate/80",
-                (!isOnPack3 || !draftStarted) && !isDraftComplete && "bg-slate/50 text-mist/30 cursor-not-allowed"
-              )}
-              title={isDraftComplete ? "Draft complete" : isOnPack3 ? "Mark draft as complete" : "Complete Pack 3 first"}
-            >
-              <CheckCircle2 className="w-5 h-5" />
-            </button>
+            {(() => {
+              const isPending = pendingStage === 'draft:complete';
+              return (
+                <button
+                  onClick={handleMarkDraftComplete}
+                  disabled={!draftStarted || !isOnPack3 || isDraftComplete}
+                  data-complete={isDraftComplete || undefined}
+                  data-pending={isPending || undefined}
+                  className={cn(
+                    "draft-page__complete-btn p-2 rounded-full transition-all ml-4",
+                    // Synced complete state - green
+                    isDraftComplete && "bg-success/20 text-success",
+                    // Pending state - amber/yellow with pulse
+                    !isDraftComplete && isPending && "bg-warning/30 text-warning animate-pulse ring-2 ring-warning",
+                    // Available to select (on pack 3, not complete, not pending)
+                    !isDraftComplete && !isPending && isOnPack3 && draftStarted && "bg-slate text-mist hover:text-snow hover:bg-slate/80",
+                    // Not available (not on pack 3 or draft not started)
+                    (!isOnPack3 || !draftStarted) && !isDraftComplete && !isPending && "bg-slate/50 text-mist/30 cursor-not-allowed"
+                  )}
+                  title={
+                    isDraftComplete 
+                      ? "Draft complete" 
+                      : isPending 
+                        ? "Draft complete (pending sync - click to deselect)" 
+                        : isOnPack3 
+                          ? "Mark draft as complete (requires sync)" 
+                          : "Complete Pack 3 first"
+                  }
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+              );
+            })()}
           </div>
 
           {/* Timer Area - Only show when timer is enabled */}
@@ -583,6 +610,12 @@ export const DraftPhasePage = () => {
             )}
           </div>
         </div>
+
+        {/* Event Sequence Panel - Draft sequences */}
+        <EventSequencePanel
+          event={event}
+          sequences={DRAFT_SEQUENCES}
+        />
       </main>
 
       {/* Options Drawer/Modal */}

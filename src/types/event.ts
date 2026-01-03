@@ -7,6 +7,29 @@ export type EventPhase =
   | 'rounds' 
   | 'complete';
 
+// Granular event stage for player view
+export type EventStage =
+  // Setup
+  | 'setup:configuring'
+  // Draft
+  | 'draft:pack1_active'
+  | 'draft:pack1_paused'
+  | 'draft:pack2_active'
+  | 'draft:pack2_paused'
+  | 'draft:pack3_active'
+  | 'draft:pack3_paused'
+  | 'draft:complete'
+  // Deckbuilding
+  | 'deckbuilding:active'
+  | 'deckbuilding:paused'
+  | 'deckbuilding:complete'
+  // Rounds (dynamic based on currentRound)
+  | `round:${number}_active`
+  | `round:${number}_paused`
+  | `round:${number}_complete`
+  // Complete
+  | 'complete:final';
+
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G';
 
 export interface Player {
@@ -62,6 +85,8 @@ export interface Match {
   playerAId: string;
   playerBId: string | null; // null = bye
   result: MatchResult | null;
+  reportedBy?: string; // playerId who reported the result
+  reportedAt?: number; // timestamp when result was reported
 }
 
 export interface Round {
@@ -110,6 +135,7 @@ export interface EventSession {
     timerPausedAt: number | null;
     timerDuration: number; // seconds
     isPaused: boolean;
+    isComplete: boolean; // true when deckbuilding is finished
   } | null;
   rounds: Round[];
   settings: EventSettings;

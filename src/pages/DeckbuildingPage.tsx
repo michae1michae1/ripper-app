@@ -2,11 +2,13 @@ import { useEffect, useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Minus, Plus, Pause, Play, Lock, Link as LinkIcon, Copy, Check, Home, Settings } from 'lucide-react';
 import { Button, clearHostAuth, OptionsDrawer } from '@/components/ui';
+import { EventSequencePanel } from '@/components/admin';
 import { TimerDisplay } from '@/components/timer';
 import { useEventStore } from '@/lib/store';
 import { useTimerMinutes } from '@/hooks/useTimer';
 import { getEventSession, updateEventSession } from '@/lib/api';
 import { parseCompositeId, createCompositeId } from '@/lib/generateId';
+import { DECKBUILDING_SEQUENCES } from '@/lib/sequenceGuards';
 import { cn } from '@/lib/cn';
 
 export const DeckbuildingPage = () => {
@@ -15,7 +17,6 @@ export const DeckbuildingPage = () => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [deckbuildingComplete, setDeckbuildingComplete] = useState(false);
   
   // Parse composite ID to get the actual event ID
   const eventId = rawEventId ? (parseCompositeId(rawEventId)?.id || rawEventId) : undefined;
@@ -32,6 +33,8 @@ export const DeckbuildingPage = () => {
     setLoading,
     setError,
     isLoading,
+    pendingStage,
+    setPendingStage,
   } = useEventStore();
   
   const timerState = event?.deckbuildingState ? {
@@ -45,6 +48,9 @@ export const DeckbuildingPage = () => {
 
   // Track if deckbuilding has been started (timer started at least once)
   const deckbuildingStarted = event?.deckbuildingState?.timerStartedAt !== null;
+  
+  // Track if deckbuilding has been marked complete (from persisted state)
+  const deckbuildingComplete = event?.deckbuildingState?.isComplete ?? false;
 
   useEffect(() => {
     // Check if we need to load: no event, or event ID mismatch (switching events)
@@ -120,21 +126,17 @@ export const DeckbuildingPage = () => {
     await updateEventSession(event.id, useEventStore.getState().event!);
   };
 
-  const handleToggleComplete = async () => {
-    if (!event) return;
+  // Clicking the complete button now sets pendingStage instead of immediately syncing
+  const handleToggleComplete = () => {
+    if (!event || !deckbuildingStarted) return;
     
-    const newCompleteState = !deckbuildingComplete;
-    setDeckbuildingComplete(newCompleteState);
-    
-    // If marking as complete and timer is running, pause it
-    if (newCompleteState && isRunning) {
-      pauseTimer();
-      await updateEventSession(event.id, useEventStore.getState().event!);
-    }
-    // If returning to deckbuilding and timer is paused, resume it
-    else if (!newCompleteState && !isRunning && deckbuildingStarted) {
-      resumeTimer();
-      await updateEventSession(event.id, useEventStore.getState().event!);
+    // Toggle pending state
+    if (pendingStage === 'deckbuilding:complete') {
+      // Clear pending if already selected
+      setPendingStage(null);
+    } else {
+      // Set as pending
+      setPendingStage('deckbuilding:complete');
     }
   };
 
@@ -389,21 +391,43 @@ export const DeckbuildingPage = () => {
             </div>
 
             {/* Deckbuilding Complete Toggle Button */}
-            <button
-              onClick={handleToggleComplete}
-              disabled={!deckbuildingStarted}
-              data-complete={deckbuildingComplete || undefined}
-              className={cn(
-                "deckbuilding-page__complete-btn w-full max-w-md px-8 py-4 rounded-lg font-semibold text-lg transition-all",
-                !deckbuildingStarted && "opacity-50 cursor-not-allowed bg-slate text-mist",
-                deckbuildingStarted && !deckbuildingComplete && "bg-arcane hover:bg-arcane/80 text-snow cursor-pointer",
-                deckbuildingComplete && "bg-success hover:bg-success/80 text-midnight cursor-pointer"
-              )}
-            >
-              {deckbuildingComplete ? "Return to Deckbuilding" : "Mark Deckbuilding Complete"}
-            </button>
+            {(() => {
+              const isPending = pendingStage === 'deckbuilding:complete';
+              return (
+                <button
+                  onClick={handleToggleComplete}
+                  disabled={!deckbuildingStarted}
+                  data-complete={deckbuildingComplete || undefined}
+                  data-pending={isPending || undefined}
+                  className={cn(
+                    "deckbuilding-page__complete-btn w-full max-w-md px-8 py-4 rounded-lg font-semibold text-lg transition-all",
+                    // Not started
+                    !deckbuildingStarted && "opacity-50 cursor-not-allowed bg-slate text-mist",
+                    // Synced complete state - green
+                    deckbuildingComplete && "bg-success hover:bg-success/80 text-midnight cursor-pointer",
+                    // Pending state - amber/yellow with pulse
+                    !deckbuildingComplete && isPending && "bg-warning hover:bg-warning/80 text-midnight cursor-pointer animate-pulse ring-2 ring-warning/50",
+                    // Available to select (started, not complete, not pending)
+                    deckbuildingStarted && !deckbuildingComplete && !isPending && "bg-arcane hover:bg-arcane/80 text-snow cursor-pointer"
+                  )}
+                >
+                  {deckbuildingComplete 
+                    ? "Deckbuilding Complete" 
+                    : isPending 
+                      ? "Pending Sync (Click to Deselect)" 
+                      : "Mark Deckbuilding Complete"
+                  }
+                </button>
+              );
+            })()}
           </div>
         </div>
+
+        {/* Event Sequence Panel - Deckbuilding sequences */}
+        <EventSequencePanel
+          event={event}
+          sequences={DECKBUILDING_SEQUENCES}
+        />
       </main>
 
       {/* Footer - Keyboard hints (hidden on mobile) */}
